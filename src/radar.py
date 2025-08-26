@@ -6,6 +6,15 @@ import numpy as np
 from typing import Optional, Tuple, List
 from dataclasses import dataclass
 
+# Import physical constants
+try:
+    from .constants import SPEED_OF_LIGHT, BOLTZMANN_CONSTANT, STANDARD_TEMPERATURE
+except ImportError:
+    # Fallback for backward compatibility
+    SPEED_OF_LIGHT = 3e8
+    BOLTZMANN_CONSTANT = 1.38e-23
+    STANDARD_TEMPERATURE = 290
+
 
 @dataclass
 class RadarParameters:
@@ -22,20 +31,17 @@ class RadarParameters:
     @property
     def wavelength(self) -> float:
         """Calculate wavelength from frequency"""
-        c = 3e8  # Speed of light
-        return c / self.frequency
+        return SPEED_OF_LIGHT / self.frequency
     
     @property
     def max_unambiguous_range(self) -> float:
         """Calculate maximum unambiguous range"""
-        c = 3e8
-        return c / (2 * self.prf)
+        return SPEED_OF_LIGHT / (2 * self.prf)
     
     @property
     def range_resolution(self) -> float:
         """Calculate range resolution"""
-        c = 3e8
-        return c / (2 * self.bandwidth)
+        return SPEED_OF_LIGHT / (2 * self.bandwidth)
 
 
 class Radar:
@@ -43,8 +49,8 @@ class Radar:
     
     def __init__(self, params: RadarParameters):
         self.params = params
-        self.k_boltzmann = 1.38e-23  # Boltzmann constant
-        self.temperature = 290  # Kelvin
+        self.k_boltzmann = BOLTZMANN_CONSTANT
+        self.temperature = STANDARD_TEMPERATURE
         
     def radar_equation(self, range_m: float, rcs: float) -> float:
         """
@@ -89,24 +95,76 @@ class Radar:
         snr_linear = pr / noise_power
         return 10 * np.log10(snr_linear)
     
-    def detection_probability(self, snr_db: float, pfa: float = 1e-6) -> float:
+    def detection_probability(self, snr_db: float, pfa: float = 1e-6, 
+                            swerling_model: int = 1, n_pulses: int = 1) -> float:
         """
-        Calculate probability of detection using simplified model
+        Calculate probability of detection using Swerling models
         
         Args:
             snr_db: Signal-to-Noise Ratio in dB
             pfa: Probability of false alarm
+            swerling_model: Swerling case (0, 1, 2, 3, 4)
+            n_pulses: Number of integrated pulses
             
         Returns:
             Probability of detection
         """
-        from scipy import special
+        from scipy import special, stats
         
         snr_linear = 10**(snr_db / 10)
         
-        # Simplified Swerling 1 model
-        threshold = -np.log(pfa)
-        pd = np.exp(-threshold / (1 + snr_linear))
+        # Calculate detection threshold from false alarm rate
+        # For non-coherent integration of n_pulses
+        threshold_factor = stats.chi2.ppf(1 - pfa, 2 * n_pulses) / (2 * n_pulses)
+        
+        if swerling_model == 0:
+            # Swerling 0: Non-fluctuating (constant RCS)
+            # Use Marcum Q-function for Rician distribution
+            from scipy.special import marcumq
+            a = np.sqrt(2 * n_pulses * snr_linear)
+            b = np.sqrt(2 * n_pulses * threshold_factor)
+            pd = float(marcumq(n_pulses, a, b))
+            
+        elif swerling_model == 1:
+            # Swerling 1: Slow fluctuation, chi-squared with 2 DOF
+            # RCS constant during pulse train, varies scan-to-scan
+            pd = (1 + threshold_factor / snr_linear) ** (-n_pulses)
+            
+        elif swerling_model == 2:
+            # Swerling 2: Fast fluctuation, chi-squared with 2 DOF
+            # RCS varies pulse-to-pulse
+            if n_pulses == 1:
+                pd = np.exp(-threshold_factor / snr_linear)
+            else:
+                # For multiple pulses with independent fluctuation
+                pd = special.gammaincc(n_pulses, n_pulses * threshold_factor / snr_linear)
+            
+        elif swerling_model == 3:
+            # Swerling 3: Slow fluctuation, chi-squared with 4 DOF
+            # RCS constant during pulse train
+            term1 = 1 + threshold_factor / (snr_linear / 2)
+            term2 = 1 - threshold_factor / (n_pulses * (2 + snr_linear))
+            pd = term1 ** (-n_pulses) * term2
+            
+        elif swerling_model == 4:
+            # Swerling 4: Fast fluctuation, chi-squared with 4 DOF
+            # RCS varies pulse-to-pulse
+            if n_pulses == 1:
+                a = threshold_factor / snr_linear
+                pd = np.exp(-a/2) * (1 + a/2)
+            else:
+                # For multiple pulses
+                sum_term = 0
+                for k in range(n_pulses):
+                    sum_term += special.binom(n_pulses - 1 + k, k) * \
+                               (2 / (2 + snr_linear)) ** k
+                pd = ((2 + snr_linear) / 2) ** (-n_pulses) * \
+                     np.exp(-n_pulses * threshold_factor / (2 + snr_linear)) * sum_term
+        else:
+            raise ValueError(f"Invalid Swerling model: {swerling_model}. Must be 0, 1, 2, 3, or 4")
+        
+        # Ensure Pd is in valid range
+        pd = np.clip(pd, 0.0, 1.0)
         
         return pd
     

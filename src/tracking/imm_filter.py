@@ -493,8 +493,11 @@ class IMMFilter:
             return filter_obj.is_measurement_valid(
                 measurement, predicted_measurement, self.gate_threshold
             )
-        except:
+        except (AttributeError, ValueError, np.linalg.LinAlgError) as e:
             # Fallback to simple distance check
+            # Log the specific error for debugging
+            import warnings
+            warnings.warn(f"Gating check failed with {type(e).__name__}, using fallback distance check")
             distance = np.linalg.norm(measurement - predicted_measurement)
             return distance < np.sqrt(self.gate_threshold)
     
