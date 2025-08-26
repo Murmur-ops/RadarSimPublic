@@ -1,0 +1,202 @@
+# Dynamic Events Scenario
+# Missile injection events during ongoing radar operations
+
+scenario:
+  name: "Dynamic Missile Injection Events"
+  description: "Anti-ship cruise missile threats injected during routine operations"
+  duration: 60.0
+  time_step: 0.05  # Higher update rate for fast events
+
+radar:
+  type: "naval_3d"
+  parameters:
+    frequency: 3.0e9  # S-band (3 GHz)
+    power: 8000  # Watts
+    antenna_gain: 38  # dB
+    pulse_width: 0.8e-6  # seconds
+    prf: 2000  # Higher PRF for fast targets
+    bandwidth: 18.0e6  # Hz
+    noise_figure: 3.5  # dB
+    losses: 2.5  # dB
+    
+  processing:
+    range_resolution: 25  # meters
+    max_range: 120000  # meters
+    velocity_resolution: 0.5  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 10  # dB above noise
+    cfar_guard_cells: 5
+    cfar_training_cells: 20
+    
+  tracking:
+    filter_type: "imm"  # Interactive Multiple Model for maneuvering targets
+    models: ["cv", "ca", "ct"]  # Constant velocity, acceleration, turn
+    max_tracks: 40
+    track_initiation_threshold: 2  # detections (faster for threats)
+    track_termination_threshold: 3  # missed detections
+    
+  resource_management:
+    enabled: true
+    adaptive_scheduling: true
+    threat_prioritization: true
+    emergency_mode: true  # Activates on threat detection
+
+# Initial targets (benign background traffic)
+targets:
+  - name: "Background-Aircraft-1"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 90000
+      azimuth: -45
+      elevation: 30
+    velocity: -180
+    rcs: 100
+    maneuver:
+      type: "straight"
+      
+  - name: "Background-Aircraft-2"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 85000
+      azimuth: 60
+      elevation: 25
+    velocity: -200
+    rcs: 120
+    maneuver:
+      type: "gentle_turn"
+      turn_rate: 0.5
+
+# Dynamic Events - Missiles injected at specific times
+dynamic_events:
+  - event_type: "target_injection"
+    time: 30.0  # seconds
+    target:
+      name: "ASM-Vampire"
+      type: "anti_ship_cruise_missile"
+      initial_position:
+        range: 40000  # meters
+        azimuth: 15   # degrees
+        elevation: 3  # degrees (sea-skimming)
+      velocity: -340  # m/s (Mach 1)
+      rcs: 0.1  # m^2
+      maneuver:
+        type: "sea_skimming"
+        altitude: 10  # meters above sea level
+        terminal_maneuver:
+          type: "weaving"
+          activation_range: 15000
+          amplitude: 200
+          frequency: 0.5
+      threat_level: "high"
+      
+  - event_type: "target_injection"
+    time: 35.0  # seconds
+    target:
+      name: "ASM-Vampire-2"
+      type: "anti_ship_cruise_missile"
+      initial_position:
+        range: 40000
+        azimuth: -20
+        elevation: 2
+      velocity: -340  # m/s (Mach 1)
+      rcs: 0.1
+      maneuver:
+        type: "sea_skimming"
+        altitude: 8
+        terminal_maneuver:
+          type: "pop_up"
+          activation_range: 12000
+          max_altitude: 300
+          dive_angle: -15
+      threat_level: "high"
+      
+  # Additional complexity events
+  - event_type: "radar_mode_change"
+    time: 31.0
+    parameters:
+      mode: "threat_tracking"
+      increased_update_rate: true
+      focused_beam_sectors: [10, 20, -15, -25]  # azimuth sectors
+      
+  - event_type: "environmental_change"
+    time: 40.0
+    parameters:
+      sea_state: 4  # Rougher seas affecting clutter
+      rain_rate: 5.0  # mm/hr
+      
+  - event_type: "target_injection"
+    time: 45.0
+    target:
+      name: "Decoy-Swarm-1"
+      type: "decoy"
+      initial_position:
+        range: 35000
+        azimuth: 25
+        elevation: 15
+      velocity: -200
+      rcs: 5  # Enhanced RCS to confuse radar
+      maneuver:
+        type: "chaff_cloud"
+        bloom_rate: 2.0
+
+environment:
+  temperature: 18  # Celsius
+  pressure: 1015  # hPa
+  humidity: 75  # percent (maritime)
+  weather: "clear"  # Initial conditions
+  sea_state: 3  # Initial sea state
+  wind_speed: 12  # m/s
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 3  # Will change during scenario
+    wind_speed: 12
+    
+  land_clutter:
+    enabled: false
+
+# Electronic Warfare
+jammers:
+  - name: "Missile-ECM-Vampire"
+    type: "deception"
+    platform: "ASM-Vampire"  # Attached to first missile
+    activation_time: 30.5  # Activates 0.5s after missile injection
+    parameters:
+      power: 15  # Watts
+      antenna_gain: 8  # dB
+      technique: "range_gate_pull_off"
+      pull_rate: 50  # m/s^2
+      activation_range: 25000
+      
+  - name: "Missile-ECM-Vampire-2"
+    type: "deception"
+    platform: "ASM-Vampire-2"
+    activation_time: 35.5
+    parameters:
+      power: 15
+      antenna_gain: 8
+      technique: "velocity_gate_pull_off"
+      pull_rate: 8  # m/s^2
+      activation_range: 25000
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/dynamic_events"
+  metrics:
+    - "first_detection_range"
+    - "track_continuity"
+    - "false_alarm_rate"
+    - "missile_leakage_probability"
+    - "reaction_time"
+    - "threat_classification_accuracy"
+    - "resource_reallocation_speed"
+  
+  # Event-specific outputs
+  event_analysis:
+    - "detection_latency_per_event"
+    - "tracking_performance_degradation"
+    - "resource_management_response"
+    - "ecm_effectiveness"

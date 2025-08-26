@@ -1,0 +1,61 @@
+# Simple Single Target Tracking Scenario
+# Minimal configuration for basic tracking demonstration
+
+scenario:
+  name: "Simple Single Target Tracking"
+  description: "Basic tracking of a single commercial aircraft"
+  duration: 30.0
+  time_step: 0.1
+
+radar:
+  type: "basic_3d"
+  parameters:
+    frequency: 10.0e9  # X-band
+    power: 1000  # Watts
+    antenna_gain: 30  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1000  # Hz
+    bandwidth: 10.0e6  # Hz
+    noise_figure: 3.0  # dB
+    losses: 2.0  # dB
+    
+  processing:
+    range_resolution: 15  # meters
+    max_range: 50000  # meters (50km)
+    velocity_resolution: 1.0  # m/s
+    n_doppler_bins: 256
+    detection_threshold: 10  # dB above noise
+    
+  tracking:
+    filter_type: "kalman"
+    max_tracks: 5
+    track_initiation_threshold: 2  # detections
+    track_termination_threshold: 3  # missed detections
+    
+  resource_management:
+    enabled: false  # Simple scenario - no resource management needed
+
+targets:
+  - name: "Airliner-1"
+    type: "commercial_aircraft"
+    initial_position: [30.0, 10.0]  # km
+    velocity: [-200.0, 0.0]  # m/s
+    rcs: 100  # m^2
+    threat_level: 10
+
+environment:
+  temperature: 15  # Celsius
+  pressure: 1013  # hPa
+  humidity: 50  # percent
+  weather: "clear"
+  
+clutter:
+  enabled: false  # No clutter for simple demo
+  
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/simple_tracking"
+  metrics:
+    - "detection_probability"
+    - "track_accuracy"

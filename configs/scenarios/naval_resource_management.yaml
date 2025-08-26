@@ -1,0 +1,225 @@
+# Naval S-Band Radar Resource Management Scenario
+# Benign targets with complex tracking requirements
+
+scenario:
+  name: "Naval S-Band Resource Management"
+  description: "S-band naval radar managing multiple benign targets with optimized beam positioning"
+  duration: 60.0
+  time_step: 0.1
+
+radar:
+  type: "naval_3d"
+  parameters:
+    frequency: 3.0e9  # S-band (3 GHz)
+    power: 8000  # Watts
+    antenna_gain: 38  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1500  # Hz
+    bandwidth: 15.0e6  # Hz
+    noise_figure: 3.5  # dB
+    losses: 2.5  # dB
+    
+  processing:
+    range_resolution: 30  # meters
+    max_range: 120000  # meters
+    velocity_resolution: 0.8  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 11  # dB above noise
+    cfar_guard_cells: 4
+    cfar_training_cells: 16
+    
+  tracking:
+    filter_type: "kalman"
+    max_tracks: 30
+    track_initiation_threshold: 3  # detections
+    track_termination_threshold: 5  # missed detections
+    
+  resource_management:
+    enabled: true
+    beam_parameters:
+      beam_width_deg: 3.0  # degrees (typical phased array)
+      beam_settle_time: 0.002  # seconds (2ms to steer and settle)
+      max_scan_rate: 360.0  # degrees/second mechanical equivalent
+      min_dwell_time: 0.001  # seconds (1ms minimum)
+      max_dwell_time: 0.1  # seconds (100ms maximum)
+    beam_positions:
+      - azimuth: 0
+        elevation: 5
+        dwell_time: 0.02
+        priority: "medium"
+      - azimuth: 15
+        elevation: 8
+        dwell_time: 0.025
+        priority: "high"
+      - azimuth: -15
+        elevation: 6
+        dwell_time: 0.02
+        priority: "medium"
+      - azimuth: 30
+        elevation: 10
+        dwell_time: 0.03
+        priority: "high"
+      - azimuth: -30
+        elevation: 7
+        dwell_time: 0.02
+        priority: "low"
+    adaptive_scheduling: true
+    threat_prioritization: true
+    resource_allocation:
+      total_beam_budget: 1.0  # seconds per scan cycle
+      min_update_rate: 0.02  # minimum 2% of budget per target
+      missile_priority_factor: 15.0  # multiplier for missile threats
+      search_revisit_interval: 2.0  # seconds for search mode
+      track_revisit_interval: 0.1  # seconds for track mode
+
+targets:
+  # Commercial Aircraft
+  - name: "Commercial-1"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 80000
+      azimuth: 10
+      elevation: 25
+    velocity: -180  # m/s
+    rcs: 100  # m^2
+    maneuver:
+      type: "straight"
+      
+  - name: "Commercial-2"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 95000
+      azimuth: -20
+      elevation: 30
+    velocity: -200
+    rcs: 120
+    maneuver:
+      type: "gentle_turn"
+      turn_rate: 1  # degrees/second
+      
+  - name: "Commercial-3"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 110000
+      azimuth: 25
+      elevation: 35
+    velocity: -220
+    rcs: 150
+    maneuver:
+      type: "straight"
+      
+  - name: "Commercial-4"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 75000
+      azimuth: -35
+      elevation: 28
+    velocity: -190
+    rcs: 90
+    maneuver:
+      type: "descent"
+      descent_rate: -2  # m/s
+      
+  - name: "Commercial-5"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 100000
+      azimuth: 5
+      elevation: 32
+    velocity: -210
+    rcs: 110
+    maneuver:
+      type: "straight"
+
+  # Friendly Fighters
+  - name: "Friendly-Fighter-1"
+    type: "fighter"
+    initial_position:
+      range: 45000
+      azimuth: 15
+      elevation: 15
+    velocity: -280
+    rcs: 3  # m^2
+    maneuver:
+      type: "combat_air_patrol"
+      patrol_radius: 5000
+      patrol_speed: 150
+      
+  - name: "Friendly-Fighter-2"
+    type: "fighter"
+    initial_position:
+      range: 50000
+      azimuth: -25
+      elevation: 12
+    velocity: -300
+    rcs: 3.5
+    maneuver:
+      type: "weaving"
+      period: 15
+      amplitude: 800
+      
+  - name: "Friendly-Fighter-3"
+    type: "fighter"
+    initial_position:
+      range: 55000
+      azimuth: 30
+      elevation: 18
+    velocity: -250
+    rcs: 2.8
+    maneuver:
+      type: "straight"
+
+  # Helicopters
+  - name: "Helicopter-1"
+    type: "helicopter"
+    initial_position:
+      range: 25000
+      azimuth: -10
+      elevation: 5
+    velocity: -80
+    rcs: 15  # m^2
+    maneuver:
+      type: "hovering_patrol"
+      hover_duration: 10
+      patrol_speed: 50
+      
+  - name: "Helicopter-2"
+    type: "helicopter"
+    initial_position:
+      range: 30000
+      azimuth: 20
+      elevation: 8
+    velocity: -100
+    rcs: 18
+    maneuver:
+      type: "low_altitude_transit"
+      altitude: 100  # meters
+
+environment:
+  temperature: 18  # Celsius
+  pressure: 1015  # hPa
+  humidity: 75  # percent (maritime)
+  weather: "partly_cloudy"
+  sea_state: 3  # Moderate waves
+  wind_speed: 12  # m/s
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 3
+    wind_speed: 12
+    
+  land_clutter:
+    enabled: false
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/naval_resource_management"
+  metrics:
+    - "detection_probability"
+    - "track_accuracy"
+    - "resource_utilization"
+    - "beam_scheduling_efficiency"
+    - "target_prioritization_performance"

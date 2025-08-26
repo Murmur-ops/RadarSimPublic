@@ -1,0 +1,196 @@
+# Missile Pincer Attack Scenario
+# Demonstrates radar saturation under multi-axis missile attack
+
+scenario:
+  name: "Missile Pincer Attack"
+  description: "3-missile coordinated pincer attack with fighter screen masking"
+  duration: 80.0
+  time_step: 0.5
+  
+  events:
+    - time: 30.0
+      type: "missile_salvo_launch"
+      description: "Launch 3-missile pincer attack"
+      parameters:
+        attack_pattern: "pincer"
+        num_missiles: 3
+        launch_vectors:
+          - position: [55.0, 35.0]  # North flank
+            velocity_magnitude: 350  # m/s (Mach 1)
+          - position: "behind_fighters"  # Center (calculated dynamically)
+            velocity_magnitude: 380
+          - position: [60.0, -40.0]  # South flank  
+            velocity_magnitude: 340
+
+radar:
+  type: "naval_3d"
+  parameters:
+    frequency: 3.0e9  # S-band (3 GHz)
+    power: 8000  # Watts
+    antenna_gain: 38  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1500  # Hz
+    bandwidth: 15.0e6  # Hz
+    noise_figure: 3.5  # dB
+    losses: 2.5  # dB
+    
+  processing:
+    range_resolution: 30  # meters
+    max_range: 120000  # meters
+    velocity_resolution: 0.8  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 11  # dB above noise
+    cfar_guard_cells: 4
+    cfar_training_cells: 16
+    
+  tracking:
+    filter_type: "jpda"  # Joint Probabilistic Data Association
+    max_tracks: 30
+    track_initiation_threshold: 2  # detections (faster for missiles)
+    track_termination_threshold: 5  # missed detections
+    track_quality_threshold: 0.2  # drop tracks below this quality
+    
+  resource_management:
+    enabled: true
+    beam_parameters:
+      beam_width_deg: 3.0  # degrees (typical phased array)
+      beam_settle_time: 0.002  # seconds (2ms to steer and settle)
+      max_scan_rate: 360.0  # degrees/second mechanical equivalent
+      min_dwell_time: 0.001  # seconds (1ms minimum)
+      max_dwell_time: 0.1  # seconds (100ms maximum)
+      angular_resolution_factor: 1.0  # Rayleigh criterion multiplier
+      
+    resource_allocation:
+      total_beam_budget: 1.0  # seconds per scan cycle
+      min_update_rate: 0.02  # minimum 2% of budget per target
+      missile_priority_factor: 15.0  # multiplier for missile threats
+      search_revisit_interval: 2.0  # seconds for search mode
+      track_revisit_interval: 0.1  # seconds for track mode
+      
+    pincer_attack_penalties:
+      angular_separation_penalty: 0.6  # 60% efficiency loss at 90° separation
+      beam_steering_overhead_factor: 2.0  # each missile needs 2 beam visits
+      quality_degradation_rate: 0.08  # 8% per second for starved tracks
+      missile_quality_floor: 0.5  # minimum quality for missile tracks
+
+targets:
+  # Commercial Aircraft
+  - name: "Commercial-747"
+    type: "commercial_aircraft"
+    initial_position: [80.0, 20.0]  # km
+    velocity: [-150.0, 0.0]  # m/s
+    rcs: 50  # m^2
+    threat_level: 20
+    
+  - name: "Commercial-A320"
+    type: "commercial_aircraft"
+    initial_position: [90.0, -15.0]
+    velocity: [-120.0, 10.0]
+    rcs: 40
+    threat_level: 20
+    
+  - name: "Commercial-B737"
+    type: "commercial_aircraft"
+    initial_position: [100.0, 5.0]
+    velocity: [-140.0, 0.0]
+    rcs: 45
+    threat_level: 20
+    
+  # Fighter Screen (4 fighters for masking)
+  - name: "Fighter-F16"
+    type: "fighter"
+    initial_position: [45.0, 8.0]
+    velocity: [-200.0, -5.0]
+    rcs: 5
+    threat_level: 40
+    
+  - name: "Fighter-F35"
+    type: "fighter"
+    initial_position: [48.0, -6.0]
+    velocity: [-220.0, 3.0]
+    rcs: 3
+    threat_level: 40
+    
+  - name: "Fighter-F18"
+    type: "fighter"
+    initial_position: [50.0, 12.0]
+    velocity: [-210.0, -8.0]
+    rcs: 4
+    threat_level: 40
+    
+  - name: "Fighter-F22"
+    type: "fighter"
+    initial_position: [43.0, -10.0]
+    velocity: [-230.0, 5.0]
+    rcs: 2
+    threat_level: 45
+    
+  # Other Military Assets
+  - name: "Helicopter-MH60"
+    type: "helicopter"
+    initial_position: [40.0, -25.0]
+    velocity: [-50.0, 5.0]
+    rcs: 10
+    threat_level: 30
+    
+  - name: "Drone-MQ9"
+    type: "drone"
+    initial_position: [70.0, 35.0]
+    velocity: [-80.0, 0.0]
+    rcs: 2
+    threat_level: 35
+    
+  - name: "Transport-C130"
+    type: "transport"
+    initial_position: [95.0, -30.0]
+    velocity: [-100.0, -10.0]
+    rcs: 100
+    threat_level: 25
+
+# Missiles are injected dynamically at event time
+missiles:
+  - name: "ASM-Vampire-1"
+    type: "cruise_missile"
+    rcs: 0.1
+    threat_level: 95
+    seeker_type: "active_radar"
+    
+  - name: "ASM-Vampire-2"
+    type: "cruise_missile"
+    rcs: 0.1
+    threat_level: 95
+    seeker_type: "active_radar"
+    
+  - name: "ASM-Vampire-3"
+    type: "cruise_missile"
+    rcs: 0.1
+    threat_level: 95
+    seeker_type: "active_radar"
+
+environment:
+  temperature: 18  # Celsius
+  pressure: 1015  # hPa
+  humidity: 75  # percent (maritime)
+  weather: "partly_cloudy"
+  sea_state: 3  # Moderate waves
+  wind_speed: 12  # m/s
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 3
+    wind_speed: 12
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/missile_pincer_attack"
+  metrics:
+    - "track_continuity"
+    - "track_quality_degradation"
+    - "resource_saturation"
+    - "beam_steering_overhead"
+    - "angular_coverage"
+    - "missile_tracking_quality"
+    - "collateral_track_loss"

@@ -1,0 +1,81 @@
+# Two Target Crossing Scenario
+# Demonstrates track association challenges when targets cross paths
+
+scenario:
+  name: "Two Target Crossing"
+  description: "Two aircraft crossing paths - tests data association"
+  duration: 60.0
+  time_step: 0.1
+
+radar:
+  type: "basic_3d"
+  parameters:
+    frequency: 10.0e9  # X-band
+    power: 2000  # Watts
+    antenna_gain: 32  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1200  # Hz
+    bandwidth: 15.0e6  # Hz
+    noise_figure: 3.0  # dB
+    losses: 2.0  # dB
+    
+  processing:
+    range_resolution: 15  # meters
+    max_range: 80000  # meters
+    velocity_resolution: 0.8  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 10  # dB above noise
+    
+  tracking:
+    filter_type: "jpda"  # Joint Probabilistic Data Association for crossing
+    max_tracks: 10
+    track_initiation_threshold: 2  # detections
+    track_termination_threshold: 4  # missed detections
+    gating_threshold: 9.21  # Chi-square 99% for 2D
+    
+  resource_management:
+    enabled: true
+    beam_parameters:
+      beam_width_deg: 2.0  # Narrower beam for better resolution
+      beam_settle_time: 0.001  # 1ms
+      max_scan_rate: 360.0  # degrees/second
+    resource_allocation:
+      total_beam_budget: 1.0
+      min_update_rate: 0.1  # 10% minimum per target
+
+targets:
+  - name: "Aircraft-North"
+    type: "commercial_aircraft"
+    initial_position: [40.0, 30.0]  # km
+    velocity: [-150.0, -100.0]  # m/s (moving southwest)
+    rcs: 80  # m^2
+    threat_level: 20
+    
+  - name: "Aircraft-South"
+    type: "commercial_aircraft"
+    initial_position: [40.0, -30.0]  # km
+    velocity: [-150.0, 100.0]  # m/s (moving northwest)
+    rcs: 90  # m^2
+    threat_level: 20
+
+environment:
+  temperature: 15  # Celsius
+  pressure: 1013  # hPa
+  humidity: 60  # percent
+  weather: "partly_cloudy"
+  
+clutter:
+  ground_clutter:
+    enabled: true
+    model: "constant_gamma"
+    clutter_to_noise_ratio: 20  # dB
+  
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/two_target_crossing"
+  metrics:
+    - "detection_probability"
+    - "track_accuracy"
+    - "track_continuity"
+    - "data_association_accuracy"

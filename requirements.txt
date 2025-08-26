@@ -1,0 +1,9 @@
+# Core dependencies for RadarSim
+numpy>=1.20.0
+scipy>=1.7.0
+matplotlib>=3.3.0
+pyyaml>=5.4.0
+
+# Optional dependencies (uncomment if needed)
+# h5py>=3.0.0  # For HDF5 IQ data format
+# scikit-learn>=0.24.0  # For additional ML utilities (optional)
