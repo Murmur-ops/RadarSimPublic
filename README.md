@@ -233,6 +233,43 @@ We welcome contributions! Areas of interest:
 
 MIT License (see LICENSE file)
 
+## References
+
+This simulation framework builds upon foundational radar theory and modern signal processing techniques:
+
+### Radar Fundamentals
+- Richards, M. A., Scheer, J., Holm, W. A. (Eds.). (2010). *Principles of Modern Radar: Basic Principles*. SciTech Publishing.
+- Skolnik, M. I. (2008). *Radar Handbook* (3rd ed.). McGraw-Hill.
+- Levanon, N., & Mozeson, E. (2004). *Radar Signals*. Wiley-IEEE Press.
+
+### Signal Processing & Detection
+- Kay, S. M. (1998). *Fundamentals of Statistical Signal Processing: Detection Theory*. Prentice Hall.
+- Mahafza, B. R. (2013). *Radar Systems Analysis and Design Using MATLAB* (3rd ed.). CRC Press.
+- Farina, A., & Studer, F. A. (1985). *Radar Data Processing* (Vols. 1-2). Research Studies Press.
+
+### Target Tracking
+- Bar-Shalom, Y., Li, X. R., & Kirubarajan, T. (2001). *Estimation with Applications to Tracking and Navigation*. Wiley.
+- Blackman, S., & Popoli, R. (1999). *Design and Analysis of Modern Tracking Systems*. Artech House.
+- Blom, H. A. P., & Bar-Shalom, Y. (1988). The Interacting Multiple Model Algorithm for Systems with Markovian Switching Coefficients. *IEEE Transactions on Automatic Control*, 33(8), 780-783.
+
+### Electronic Warfare & Jamming
+- Schleher, D. C. (1999). *Electronic Warfare in the Information Age*. Artech House.
+- Neri, F. (2018). *Introduction to Electronic Defense Systems* (3rd ed.). Artech House.
+- Adamy, D. (2015). *EW 104: Electronic Warfare Against a New Generation of Threats*. Artech House.
+
+### Machine Learning for Radar
+- Ender, J., Leushacke, L., Brenner, A., & Wilden, H. (2011). Radar Techniques and Technologies. In *NATO Science and Technology Organization*.
+- Chen, V. C., & Ling, H. (2002). *Time-Frequency Transforms for Radar Imaging and Signal Analysis*. Artech House.
+- Haykin, S., & Deng, C. (1991). Classification of Radar Clutter Using Neural Networks. *IEEE Transactions on Neural Networks*, 2(6), 589-600.
+
+### Radar Cross Section & Electromagnetic Theory
+- Knott, E. F., Shaeffer, J. F., & Tuley, M. T. (2004). *Radar Cross Section* (2nd ed.). SciTech Publishing.
+- Ulaby, F. T., & Long, D. G. (2014). *Microwave Radar and Radiometric Remote Sensing*. University of Michigan Press.
+
+### Public Domain Radar Data
+- Swerling, P. (1960). Probability of Detection for Fluctuating Targets. *IRE Transactions on Information Theory*, 6(2), 269-308.
+- Various publicly available radar specifications from defense contractor publications and academic papers.
+
 ## Citation
 
 If you use RadarSim in your research, please cite:
