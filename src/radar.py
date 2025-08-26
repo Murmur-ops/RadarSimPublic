@@ -120,10 +120,31 @@ class Radar:
         if swerling_model == 0:
             # Swerling 0: Non-fluctuating (constant RCS)
             # Use Marcum Q-function for Rician distribution
-            from scipy.special import marcumq
-            a = np.sqrt(2 * n_pulses * snr_linear)
-            b = np.sqrt(2 * n_pulses * threshold_factor)
-            pd = float(marcumq(n_pulses, a, b))
+            try:
+                from scipy.special import marcumq
+                a = np.sqrt(2 * n_pulses * snr_linear)
+                b = np.sqrt(2 * n_pulses * threshold_factor)
+                pd = float(marcumq(n_pulses, a, b))
+            except ImportError:
+                # Fallback for older scipy versions without marcumq
+                # Use approximation based on Albersheim's equation
+                import warnings
+                warnings.warn(
+                    "scipy.special.marcumq not available (requires scipy >= 1.8.0). "
+                    "Using Albersheim approximation for Swerling 0.",
+                    RuntimeWarning
+                )
+                # Albersheim's approximation for non-fluctuating targets
+                A = np.log(0.62 / pfa)
+                B = np.log(1 / (1 - 0.5))  # Pd = 0.5 reference
+                snr_ref = A + 0.12 * A * B + 1.7 * B
+                
+                # Adjust for actual SNR
+                K = snr_linear * n_pulses / snr_ref
+                if K > 0.1:
+                    pd = 1.0 / (1.0 + np.exp(-2.0 * (K - 1.0)))
+                else:
+                    pd = K / 2.0
             
         elif swerling_model == 1:
             # Swerling 1: Slow fluctuation, chi-squared with 2 DOF
