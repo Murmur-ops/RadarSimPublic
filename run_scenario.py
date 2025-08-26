@@ -108,8 +108,14 @@ class ScenarioRunner:
             for target in targets:
                 detected = False
                 for det in detections:
+                    # Handle velocity comparison for scalar or vector
+                    if isinstance(target['velocity'], list):
+                        target_vel = target['velocity'][0] if len(target['velocity']) > 0 else 0
+                    else:
+                        target_vel = target['velocity']
+                    
                     if abs(det['range'] - target['range']) < 200 and \
-                       abs(det['velocity'] - target['velocity']) < 5:
+                       abs(det['velocity'] - target_vel) < 5:
                         detected = True
                         break
                 target_histories[target['name']]['detected'].append(detected)
@@ -183,8 +189,18 @@ class ScenarioRunner:
     
     def _update_target_position(self, target: Dict, dt: float):
         """Update target position based on velocity and maneuvers"""
-        # Simple constant velocity model for now
-        target['range'] += target['velocity'] * dt
+        # Handle velocity as either scalar or vector
+        if isinstance(target['velocity'], list):
+            # Convert to radial velocity component for range update
+            # Simplified: use magnitude of velocity vector
+            velocity_mag = np.linalg.norm(target['velocity'])
+            # Negative velocity means approaching
+            radial_velocity = -velocity_mag if target['velocity'][0] < 0 else velocity_mag
+        else:
+            radial_velocity = target['velocity']
+        
+        # Update range based on radial velocity
+        target['range'] += radial_velocity * dt
         
         # Apply maneuvers if specified
         if target.get('maneuver'):

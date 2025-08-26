@@ -108,7 +108,15 @@ class JammedRadarSimulator:
         # Add targets
         for target in targets:
             range_bin = int(target['range'] / self.range_resolution)
-            doppler_bin = int(target['velocity'] / self.velocity_resolution) + self.n_doppler_bins // 2
+            
+            # Handle velocity as scalar or vector
+            if isinstance(target['velocity'], list):
+                # Use radial component (first element for approaching/receding)
+                radial_velocity = target['velocity'][0] if len(target['velocity']) > 0 else 0
+            else:
+                radial_velocity = target['velocity']
+            
+            doppler_bin = int(radial_velocity / self.velocity_resolution) + self.n_doppler_bins // 2
             
             if 0 <= range_bin < self.n_range_bins and 0 <= doppler_bin < self.n_doppler_bins:
                 # Calculate target SNR
@@ -134,7 +142,14 @@ class JammedRadarSimulator:
         """Add jamming signal to range-Doppler map"""
         
         jammer_range_bin = int(jammer.range / self.range_resolution)
-        jammer_doppler_bin = int(jammer.velocity / self.velocity_resolution) + self.n_doppler_bins // 2
+        
+        # Handle jammer velocity as scalar or vector
+        if isinstance(jammer.velocity, list):
+            jammer_vel = jammer.velocity[0] if len(jammer.velocity) > 0 else 0
+        else:
+            jammer_vel = jammer.velocity
+        
+        jammer_doppler_bin = int(jammer_vel / self.velocity_resolution) + self.n_doppler_bins // 2
         
         if 0 <= jammer_range_bin < self.n_range_bins:
             # Calculate jamming power at radar

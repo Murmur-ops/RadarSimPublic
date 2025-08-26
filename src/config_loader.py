@@ -200,13 +200,53 @@ class ConfigLoader:
         # Parse targets
         targets = []
         for target_cfg in config_dict['targets']:
+            # Handle both position formats
+            initial_pos = target_cfg['initial_position']
+            
+            if isinstance(initial_pos, list):
+                # Convert from Cartesian [x, y] km to spherical coordinates
+                x_km, y_km = initial_pos[0], initial_pos[1] if len(initial_pos) > 1 else 0
+                z_km = initial_pos[2] if len(initial_pos) > 2 else 0
+                
+                # Convert to meters
+                x_m, y_m, z_m = x_km * 1000, y_km * 1000, z_km * 1000
+                
+                # Calculate spherical coordinates
+                range_m = np.sqrt(x_m**2 + y_m**2 + z_m**2)
+                azimuth_rad = np.arctan2(y_m, x_m)
+                azimuth_deg = np.degrees(azimuth_rad)
+                
+                if range_m > 0:
+                    elevation_rad = np.arcsin(z_m / range_m)
+                    elevation_deg = np.degrees(elevation_rad)
+                else:
+                    elevation_deg = 0
+                
+                target_range = range_m
+                target_azimuth = azimuth_deg
+                target_elevation = elevation_deg
+            else:
+                # Dict format with range, azimuth, elevation
+                target_range = initial_pos['range']
+                target_azimuth = initial_pos.get('azimuth', 0)
+                target_elevation = initial_pos.get('elevation', 0)
+            
+            # Handle velocity format (can be list [vx, vy] or dict)
+            velocity = target_cfg['velocity']
+            if isinstance(velocity, dict):
+                velocity = [velocity.get('x', 0), velocity.get('y', 0), velocity.get('z', 0)]
+            elif isinstance(velocity, (int, float)):
+                velocity = [velocity, 0, 0]
+            elif len(velocity) == 2:
+                velocity = [velocity[0], velocity[1], 0]
+            
             target = TargetConfig(
                 name=target_cfg['name'],
                 type=target_cfg['type'],
-                range=target_cfg['initial_position']['range'],
-                azimuth=target_cfg['initial_position']['azimuth'],
-                elevation=target_cfg['initial_position']['elevation'],
-                velocity=target_cfg['velocity'],
+                range=target_range,
+                azimuth=target_azimuth,
+                elevation=target_elevation,
+                velocity=velocity,
                 rcs=target_cfg['rcs'],
                 maneuver=target_cfg.get('maneuver')
             )
@@ -304,7 +344,13 @@ class ConfigLoader:
             if target.range > scenario.radar.max_range:
                 warnings.append(f"Target {target.name} is beyond max radar range")
             
-            if abs(target.velocity) > scenario.radar.n_doppler_bins * scenario.radar.velocity_resolution / 2:
+            # Calculate velocity magnitude if it's a list
+            if isinstance(target.velocity, list):
+                velocity_mag = np.linalg.norm(target.velocity)
+            else:
+                velocity_mag = abs(target.velocity)
+            
+            if velocity_mag > scenario.radar.n_doppler_bins * scenario.radar.velocity_resolution / 2:
                 warnings.append(f"Target {target.name} velocity may cause Doppler ambiguity")
         
         # Check jammer parameters
