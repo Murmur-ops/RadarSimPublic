@@ -6,7 +6,7 @@ RadarSim is a comprehensive, physics-based radar simulation framework that combi
 
 ## Key Features
 
-### 🎯 **Core Capabilities**
+### **Core Capabilities**
 - **Full IQ Data Generation**: Realistic in-phase/quadrature signal synthesis with receiver impairments
 - **Machine Learning Inference**: Real-time threat classification using custom Transformer and CNN architectures
 - **Advanced Jamming**: DRFM, noise, deception, and false target generation
@@ -14,7 +14,7 @@ RadarSim is a comprehensive, physics-based radar simulation framework that combi
 - **YAML Configuration**: Fully configurable scenarios without code changes
 - **No External Dependencies**: Pure Python/NumPy implementation
 
-### 🧠 **Machine Learning Pipeline**
+### **Machine Learning Pipeline**
 
 #### Architecture
 - **Transformer Network**: Temporal pattern analysis with multi-head attention (64-dim, 4 heads)
@@ -28,7 +28,7 @@ RadarSim is a comprehensive, physics-based radar simulation framework that combi
 - **MEDIUM**: Helicopters/patrol aircraft (blade modulation detection)
 - **LOW**: Commercial/navigation (PW > 500μs, PRF < 30Hz)
 
-### 📡 **Signal Processing**
+### **Signal Processing**
 
 #### IQ Generation Pipeline
 ```python
@@ -42,7 +42,7 @@ Clutter → Thermal Noise → Receiver Impairments → ADC Quantization
 - DC offset compensation
 - ADC quantization (configurable bit depth)
 
-### 🎮 **Simulation Components**
+### **Simulation Components**
 
 1. **Radar Systems**
    - Pulse-Doppler processing
