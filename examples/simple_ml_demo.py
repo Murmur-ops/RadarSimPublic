@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
-from ml_threat_priority import MLThreatClassifier, PDWSequence, ThreatPriority
+from ml_models.ml_threat_priority import MLThreatClassifier, PDWSequence, ThreatPriority
 
 def main():
     print("="*60)

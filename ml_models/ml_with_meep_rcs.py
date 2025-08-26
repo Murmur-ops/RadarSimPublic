@@ -11,8 +11,8 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 
 # Import existing ML components
-from ml_threat_priority import ThreatPriority, PDWSequence, MLThreatClassifier
-from ml_training_pipeline import ThreatType, RadarSignature, SimpleNeuralNetwork
+from .ml_threat_priority import ThreatPriority, PDWSequence, MLThreatClassifier
+from .ml_training_pipeline import ThreatType, RadarSignature, SimpleNeuralNetwork
 
 @dataclass 
 class MEEPRCSData:

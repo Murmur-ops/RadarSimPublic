@@ -103,10 +103,13 @@ python run_scenario.py missile_defense --output results/
 
 ```bash
 # Run the ML threat assessment demonstration
-python ml_threat_priority.py
+python -m ml_models.ml_threat_priority
 
 # Train a new classifier on synthetic data
-python ml_training_pipeline.py
+python -m ml_models.ml_training_pipeline
+
+# Or use the simple example
+python examples/simple_ml_demo.py
 ```
 
 ### 3. Generate IQ Data
@@ -185,18 +188,24 @@ The simulation is fully configurable through YAML files. Here's the structure:
 
 ```
 RadarSim/
-├── src/
-│   ├── radar_simulation/     # Core radar physics
-│   ├── tracking/             # Multi-target tracking
-│   ├── classification/       # Feature extraction
-│   ├── jamming/             # EW systems
-│   └── iq_generator.py      # IQ data synthesis
+├── src/                     # Core simulation modules
+│   ├── radar_simulation/    # Radar physics and propagation
+│   ├── tracking/           # Multi-target tracking algorithms
+│   ├── classification/    # Feature extraction and signatures
+│   ├── jamming/           # Electronic warfare systems
+│   ├── resource_management/ # Beam scheduling and prioritization
+│   └── iq_generator.py    # IQ data synthesis
+├── ml_models/              # Machine learning modules
+│   ├── ml_threat_priority.py  # Inference engine
+│   ├── ml_training_pipeline.py # Training system
+│   └── ml_with_meep_rcs.py    # MEEP integration (optional)
 ├── configs/
-│   └── scenarios/           # YAML configurations
-├── examples/                # Example scripts
-├── ml_threat_priority.py    # ML inference engine
-├── ml_training_pipeline.py  # Training system
-└── run_scenario.py          # Main simulation runner
+│   └── scenarios/         # YAML scenario configurations
+├── demos/                 # Demonstration scripts
+│   └── basic_jamming_demo.py
+├── examples/              # Simple example scripts
+│   └── simple_ml_demo.py
+└── run_scenario.py        # Main simulation runner
 ```
 
 ## Example Use Cases

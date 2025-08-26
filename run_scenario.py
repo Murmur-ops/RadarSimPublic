@@ -18,7 +18,7 @@ import logging
 sys.path.append(str(Path(__file__).parent))
 
 from src.config_loader import ConfigLoader, ScenarioConfig
-from basic_jamming_demo import JammedRadarSimulator, Jammer
+from demos.basic_jamming_demo import JammedRadarSimulator, Jammer
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

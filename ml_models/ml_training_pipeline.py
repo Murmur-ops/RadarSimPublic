@@ -12,7 +12,7 @@ from enum import Enum
 import time
 
 # Import our threat priority system
-from ml_threat_priority import ThreatPriority, PDWSequence
+from .ml_threat_priority import ThreatPriority, PDWSequence
 
 
 class ThreatType(Enum):
