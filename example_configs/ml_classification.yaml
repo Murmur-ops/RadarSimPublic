@@ -1,0 +1,160 @@
+# Machine Learning Classification Scenario
+# Demonstrates real-time threat classification
+
+scenario:
+  name: "ML Threat Classification"
+  description: "Classify multiple threat types using ML inference"
+  duration: 90.0
+  time_step: 0.1
+
+radar:
+  type: "multifunction"
+  parameters:
+    frequency: 9.0e9  # X-band
+    power: 8000
+    antenna_gain: 38
+    pulse_width: 0.5e-6  # Variable pulse width capability
+    prf: 3000  # Medium PRF
+    bandwidth: 30.0e6
+    noise_figure: 3.5
+    losses: 2.5
+    
+  processing:
+    range_resolution: 20
+    max_range: 150000
+    velocity_resolution: 0.5
+    n_doppler_bins: 512
+    detection_threshold: 11
+    cfar_guard_cells: 4
+    cfar_training_cells: 18
+    
+  tracking:
+    filter_type: "imm"
+    models: ["cv", "ca", "ct", "jerk"]  # Include jerk model
+    max_tracks: 50
+    
+  ml_classification:
+    enabled: true
+    model: "ensemble"  # Transformer + CNN ensemble
+    inference_rate: 10  # Run inference at 10 Hz
+    feature_extraction: "advanced"  # Use all 19 features
+    threat_priority_queue: true
+    max_priority_tracks: 10
+
+targets:
+  # CRITICAL: Anti-ship missile
+  - name: "ASM-1"
+    type: "anti_ship_cruise_missile"
+    initial_position:
+      range: 100000
+      azimuth: 10
+      elevation: 3
+    velocity: -320  # Subsonic cruise
+    rcs: 0.1
+    signature:
+      pulse_width: 0.5e-6  # Very short pulses
+      pri: 100e-6  # High PRF
+      frequency_agility: false
+      
+  # HIGH: Fighter with frequency agility
+  - name: "Fighter-1"
+    type: "fighter"
+    initial_position:
+      range: 120000
+      azimuth: -20
+      elevation: 25
+    velocity: -350
+    rcs: 5
+    signature:
+      pulse_width: 10e-6  # Medium pulses
+      frequency_hopping: true
+      hop_pattern: "random"
+      hop_bandwidth: 500e6
+      
+  # MEDIUM: Helicopter with blade modulation
+  - name: "Helo-1"
+    type: "helicopter"
+    initial_position:
+      range: 60000
+      azimuth: 45
+      elevation: 10
+    velocity: -60
+    rcs: 10
+    signature:
+      blade_count: 4
+      rotor_rpm: 300  # 5 Hz rotation
+      blade_modulation: true
+      pulse_width: 20e-6
+      
+  # MEDIUM: Maritime patrol aircraft
+  - name: "MPA-1"
+    type: "maritime_patrol"
+    initial_position:
+      range: 150000
+      azimuth: 30
+      elevation: 35
+    velocity: -180
+    rcs: 50
+    signature:
+      pulse_width: 50e-6
+      pri: 1e-3
+      search_pattern: "circular"
+      
+  # LOW: Commercial vessel
+  - name: "Commercial-1"
+    type: "commercial_ship"
+    initial_position:
+      range: 80000
+      azimuth: -60
+      elevation: 0
+    velocity: -10  # Slow moving ship
+    rcs: 10000  # Very large RCS
+    signature:
+      pulse_width: 1e-3  # Long navigation radar pulses
+      pri: 50e-3  # Very slow PRF
+      rotation_period: 3  # 3 second antenna rotation
+      
+  # UNKNOWN: Unidentified drone
+  - name: "UAV-1"
+    type: "unknown_drone"
+    initial_position:
+      range: 40000
+      azimuth: 0
+      elevation: 15
+    velocity: -80
+    rcs: 0.01  # Very small
+    signature:
+      pulse_width: 100e-6
+      irregular_pattern: true
+
+jammers: []  # No jamming to clearly demonstrate classification
+
+environment:
+  temperature: 20
+  pressure: 1013.25
+  humidity: 60
+  weather: "clear"
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 2
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/ml_classification"
+  
+  metrics:
+    - "classification_accuracy"
+    - "classification_confusion_matrix"
+    - "threat_priority_accuracy"
+    - "inference_latency"
+    - "feature_importance"
+    
+  ml_outputs:
+    save_features: true  # Save extracted features
+    save_predictions: true  # Save classification results
+    save_attention_weights: true  # Save transformer attention
+    prediction_interval: 1.0  # Save every second

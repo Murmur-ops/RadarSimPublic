@@ -1,0 +1,113 @@
+# Electronic Warfare Demonstration
+# Shows various jamming techniques and their effects
+
+scenario:
+  name: "Jamming Techniques Demo"
+  description: "Demonstrate DRFM, noise, and deception jamming"
+  duration: 60.0
+  time_step: 0.1
+
+radar:
+  type: "fire_control"
+  parameters:
+    frequency: 10.0e9  # X-band fire control
+    power: 5000
+    antenna_gain: 40
+    pulse_width: 1.0e-6
+    prf: 2000
+    bandwidth: 20.0e6
+    noise_figure: 4
+    losses: 3
+    
+  processing:
+    range_resolution: 25
+    max_range: 100000
+    velocity_resolution: 0.5
+    n_doppler_bins: 256
+    detection_threshold: 13
+    cfar_guard_cells: 4
+    cfar_training_cells: 16
+    
+  tracking:
+    filter_type: "ekf"  # Extended Kalman Filter
+    max_tracks: 30
+
+targets:
+  # Real target to protect with jamming
+  - name: "Strike-Aircraft"
+    type: "fighter"
+    initial_position:
+      range: 80000
+      azimuth: 0
+      elevation: 20
+    velocity: -250  # Inbound at 250 m/s
+    rcs: 3  # Reduced RCS fighter
+    
+  # Second aircraft for cooperative jamming
+  - name: "EW-Aircraft"
+    type: "electronic_warfare"
+    initial_position:
+      range: 90000
+      azimuth: 10
+      elevation: 25
+    velocity: -200
+    rcs: 5
+
+jammers:
+  # Noise jamming from EW aircraft
+  - name: "Noise-Jammer"
+    type: "noise"
+    platform: "EW-Aircraft"
+    parameters:
+      power: 1000  # 1kW noise jammer
+      antenna_gain: 15
+      bandwidth: 50.0e6
+      technique: "barrage"  # Wideband barrage
+      
+  # DRFM repeater jamming from strike aircraft
+  - name: "DRFM-Jammer"
+    type: "deception"
+    platform: "Strike-Aircraft"
+    parameters:
+      power: 200
+      antenna_gain: 10
+      technique: "drfm_repeater"
+      delay: 100e-9  # 100ns processing delay
+      modifications:
+        range_gate_pull: true
+        pull_rate: 50  # m/s^2
+        false_targets: 3  # Generate 3 false targets
+        false_target_spacing: 500  # 500m spacing
+        
+  # Stand-off jamming platform
+  - name: "Standoff-Jammer"
+    type: "deception"
+    platform: "standalone"
+    range: 120000  # 120km standoff
+    azimuth: 30
+    parameters:
+      power: 5000  # High power standoff jammer
+      antenna_gain: 20
+      technique: "velocity_gate_pull"
+      pull_rate: 10  # m/s^2 velocity pull
+      activation_range: 100000
+
+environment:
+  temperature: 15
+  pressure: 1013.25
+  humidity: 50
+  weather: "clear"
+  
+clutter:
+  ground_clutter:
+    enabled: false
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/jamming_demo"
+  metrics:
+    - "jamming_effectiveness"
+    - "burnthrough_range"
+    - "false_target_count"
+    - "track_seduction_rate"

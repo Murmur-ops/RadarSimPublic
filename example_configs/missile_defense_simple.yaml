@@ -1,0 +1,112 @@
+# Missile Defense Scenario
+# Naval ship defending against incoming missiles
+
+scenario:
+  name: "Simple Missile Defense"
+  description: "Detect and track incoming anti-ship missiles"
+  duration: 30.0  # 30 second engagement
+  time_step: 0.05  # 20 Hz update rate
+
+radar:
+  type: "naval_defense"
+  parameters:
+    frequency: 9.5e9  # X-band for missile defense
+    power: 10000  # 10kW peak power
+    antenna_gain: 42  # High-gain phased array
+    pulse_width: 0.5e-6  # Short pulse for resolution
+    prf: 5000  # High PRF for fast targets
+    bandwidth: 50.0e6  # Wide bandwidth for resolution
+    noise_figure: 3
+    losses: 3
+    
+  processing:
+    range_resolution: 10  # Fine range resolution
+    max_range: 50000  # 50km max range
+    velocity_resolution: 0.5
+    n_doppler_bins: 512
+    detection_threshold: 10  # Lower threshold for small RCS
+    cfar_guard_cells: 5
+    cfar_training_cells: 20
+    
+  tracking:
+    filter_type: "imm"  # Interactive Multiple Model for maneuvering targets
+    models: ["cv", "ca", "ct"]  # Velocity, acceleration, coordinated turn
+    max_tracks: 10
+    association_threshold: 15.0
+    track_confirmation: 2  # Quick confirmation for fast targets
+    track_deletion: 3
+
+targets:
+  # Primary threat - sea-skimming missile
+  - name: "SSM-1"
+    type: "anti_ship_missile"
+    initial_position:
+      range: 40000  # 40km initial detection
+      azimuth: 0  # Dead ahead
+      elevation: 2  # Low altitude (sea-skimming)
+    velocity: -340  # Mach 1 (340 m/s)
+    rcs: 0.1  # Small RCS
+    maneuver:
+      type: "terminal_weave"
+      activation_range: 5000  # Start weaving at 5km
+      amplitude: 50  # Small weaves
+      frequency: 2  # 2 Hz weave
+      
+  # Secondary threat - high altitude
+  - name: "SSM-2" 
+    type: "anti_ship_missile"
+    initial_position:
+      range: 35000
+      azimuth: 15  # 15 degrees off bow
+      elevation: 30  # Higher approach angle
+    velocity: -300
+    rcs: 0.15
+    maneuver:
+      type: "diving"
+      activation_range: 8000
+      dive_angle: 45
+      
+  # Decoy/false target
+  - name: "Decoy"
+    type: "decoy"
+    initial_position:
+      range: 38000
+      azimuth: -10
+      elevation: 5
+    velocity: -200  # Slower than real missiles
+    rcs: 10  # Enhanced RCS to attract radar
+
+jammers:
+  # Simple noise jamming from one missile
+  - name: "Missile-Jammer"
+    type: "noise"
+    platform: "SSM-1"  # Attached to first missile
+    parameters:
+      power: 100  # 100W jammer
+      antenna_gain: 10
+      bandwidth: 100.0e6  # Wideband noise
+      activation_range: 15000  # Turn on at 15km
+
+environment:
+  temperature: 25  # Tropical conditions
+  pressure: 1010
+  humidity: 85  # High humidity over ocean
+  weather: "clear"
+  sea_state: 3  # Moderate seas
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "gaussian"  # Simple Gaussian model
+    sea_state: 3
+    grazing_angle: 2  # Low grazing angle
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/missile_defense"
+  metrics:
+    - "first_detection_range"
+    - "track_continuity"
+    - "time_to_impact"
+    - "classification_accuracy"
