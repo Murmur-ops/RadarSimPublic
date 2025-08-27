@@ -1,0 +1,125 @@
+# first_scenario.yaml - A simple radar tracking scenario for beginners
+scenario:
+  name: "Getting Started - First Radar Simulation"
+  description: "Track a commercial aircraft with a ground-based radar"
+  duration: 30.0  # seconds
+  time_step: 0.1  # seconds
+  output_dir: "results/getting_started"
+
+# Define the radar system
+radar_systems:
+  - name: "Tutorial-Radar"
+    type: "pulse_doppler"
+    position: [0, 0, 10]  # meters [x, y, z]
+    orientation: [0, 0]   # [azimuth, elevation] in degrees
+    
+    # Transmitter parameters
+    frequency: 10.0e9     # 10 GHz (X-band)
+    power: 1000.0        # 1 kW transmit power
+    pulse_width: 1.0e-6  # 1 microsecond
+    prf: 1000           # Pulse Repetition Frequency (Hz)
+    
+    # Antenna parameters
+    antenna:
+      type: "parabolic"
+      gain: 35.0         # dB
+      azimuth_beamwidth: 2.0    # degrees
+      elevation_beamwidth: 2.0  # degrees
+      sidelobe_level: -25.0     # dB
+    
+    # Receiver parameters
+    receiver:
+      noise_figure: 3.0     # dB
+      bandwidth: 1.0e6      # 1 MHz
+      detection_threshold: 13.0  # dB SNR
+    
+    # Processing parameters
+    processing:
+      integration_pulses: 10
+      cfar_guard_cells: 3
+      cfar_training_cells: 10
+      cfar_threshold_factor: 4.0
+    
+    # Tracking configuration
+    tracking:
+      enabled: true
+      algorithm: "kalman"
+      association_gate: 3.0
+      track_confirmation: 3
+      track_deletion: 5
+
+# Define targets
+targets:
+  - name: "Commercial-Flight-001"
+    type: "aircraft"
+    subtype: "airliner"
+    
+    # Initial position [x, y, z] in meters
+    initial_position: [30000, 15000, 10000]
+    
+    # Velocity [vx, vy, vz] in m/s
+    velocity: [-200, -50, 0]
+    
+    # Radar Cross Section
+    rcs: 100.0  # m² (typical for large aircraft)
+    
+    # Fluctuation model
+    swerling_model: 1
+    
+    # Optional: Define waypoints for complex trajectories
+    trajectory:
+      type: "straight"  # or "waypoint", "orbit", "random_walk"
+
+# Environmental conditions
+environment:
+  # Atmospheric conditions
+  atmosphere:
+    temperature: 15.0     # Celsius
+    pressure: 1013.25    # hPa
+    humidity: 60         # percent
+    rain_rate: 0.0       # mm/hr
+  
+  # Clutter settings
+  clutter:
+    ground_clutter:
+      enabled: false
+      clutter_coefficient: -20  # dB
+    
+    sea_clutter:
+      enabled: false
+      sea_state: 2
+
+# Simulation options
+simulation:
+  # Random seed for reproducibility
+  random_seed: 42
+  
+  # Monte Carlo runs
+  num_runs: 1
+  
+  # Data recording
+  record:
+    detections: true
+    tracks: true
+    truth: true
+    metrics: true
+  
+  # Visualization
+  visualization:
+    enabled: true
+    update_rate: 10  # Hz
+    display_type: "ppi"  # Plan Position Indicator
+    range_rings: [10000, 20000, 30000, 40000]  # meters
+
+# Output configuration
+output:
+  save_plots: true
+  save_data: true
+  data_format: "json"  # or "csv", "hdf5"
+  
+  # Metrics to calculate
+  metrics:
+    - "detection_probability"
+    - "false_alarm_rate"
+    - "track_accuracy"
+    - "track_continuity"

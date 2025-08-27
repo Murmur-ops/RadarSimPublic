@@ -1,0 +1,21 @@
+[package]
+name = "radar_core"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "radar_core"
+crate-type = ["cdylib"]
+path = "rust/src/lib.rs"
+
+[dependencies]
+pyo3 = { version = "0.20", features = ["extension-module"] }
+numpy = "0.20"
+ndarray = "0.15"
+num-complex = "0.4"
+rustfft = "6.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
