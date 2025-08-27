@@ -1,0 +1,330 @@
+# Airport ATC Radar - Rush Hour Traffic Management
+# Demonstrates resource prioritization in civilian air traffic control
+# Large passenger aircraft prioritized over small general aviation
+#
+# SCENARIO CONTEXT:
+# Major international airport during evening rush hour
+# ATC must prioritize large passenger aircraft for safety
+# Small aircraft experience degraded tracking when resources saturated
+
+scenario:
+  name: "Airport ATC Rush Hour Management"
+  description: "Evening rush with multiple large aircraft arrivals"
+  duration: 80.0
+  time_step: 0.5
+  
+  # Rush hour event - multiple large aircraft arrive
+  events:
+    - time: 30.0
+      type: "rush_hour_arrivals"
+      description: "Five large aircraft request approach vectors - major surge"
+      parameters:
+        aircraft:
+          - name: "Emirates-A380-1"
+            type: "super_heavy"
+            position: [85.0, 15.0]  # From Europe
+            velocity: [-180, -31]  # Approaching airport
+            altitude: 8000  # meters
+            rcs: 200  # Very large RCS
+            passengers: 555
+            
+          - name: "Cargo-747-8F"
+            type: "heavy_cargo"
+            position: [80.0, -10.0]  # From south
+            velocity: [-170, 18]
+            altitude: 7500
+            rcs: 150
+            cargo_tons: 140
+            
+          - name: "Singapore-A380-2"
+            type: "super_heavy"
+            position: [90.0, 0.0]  # From Asia
+            velocity: [-175, 0]
+            altitude: 8500
+            rcs: 200
+            passengers: 525
+            
+          - name: "Lufthansa-A380-3"
+            type: "super_heavy"
+            position: [75.0, 25.0]  # From northwest
+            velocity: [-165, -40]
+            altitude: 8200
+            rcs: 200
+            passengers: 510
+            
+          - name: "FedEx-747-Cargo"
+            type: "heavy_cargo"
+            position: [88.0, -20.0]  # From southeast
+            velocity: [-175, 25]
+            altitude: 7800
+            rcs: 150
+            cargo_tons: 135
+
+radar:
+  type: "atc_approach_radar"
+  position: [0.0, 0.0, 0.0]  # Airport at origin
+  
+  parameters:
+    frequency: 1.3e9  # L-band (typical ATC)
+    power: 2000  # Watts (civilian power levels)
+    antenna_gain: 34  # dB
+    pulse_width: 2.0e-6  # seconds
+    prf: 800  # Hz
+    bandwidth: 5.0e6  # Hz
+    noise_figure: 4.0  # dB
+    losses: 3.0  # dB
+    
+  processing:
+    range_resolution: 60  # meters
+    max_range: 100000  # 100 km approach zone
+    velocity_resolution: 1.5  # m/s
+    n_doppler_bins: 256
+    detection_threshold: 10  # dB above noise
+    cfar_guard_cells: 3
+    cfar_training_cells: 12
+    
+  tracking:
+    filter_type: "imm"  # Interacting Multiple Model
+    max_tracks: 25  # Typical ATC limit
+    track_initiation_threshold: 2  # detections
+    track_termination_threshold: 4  # missed detections
+    
+    # Track quality thresholds
+    track_quality_thresholds:
+      excellent: 1.0
+      good: 0.8
+      fair: 0.6
+      poor: 0.4
+      drop: 0.25  # Tracks dropped below this
+      
+    # Quality degradation when resource-starved
+    quality_degradation_rates:
+      super_heavy: 0.0  # No degradation for A380s
+      heavy: 0.01  # Minimal for large aircraft
+      medium: 0.03  # Slow degradation
+      light: 0.06  # Moderate degradation
+      general_aviation: 0.10  # Fast degradation
+      
+  resource_management:
+    enabled: true
+    total_beam_budget: 1.0  # seconds per scan
+    
+    # Normal traffic allocation
+    normal_allocation:
+      heavy_aircraft: 0.35  # Large aircraft
+      medium_aircraft: 0.30  # 737/A320 class
+      light_aircraft: 0.20  # Business jets
+      general_aviation: 0.15  # Small aircraft
+      
+    # Rush hour allocation (extreme prioritization with 5 large aircraft)
+    rush_hour_allocation:
+      super_heavy: 0.75  # A380s get vast majority (3 A380s)
+      heavy: 0.15  # Other large aircraft (2 747s)
+      medium: 0.07  # Medium airliners (severely reduced)
+      light: 0.02  # Business jets (almost nothing)
+      general_aviation: 0.01  # Cessnas (essentially abandoned)
+
+# Initial air traffic (before rush hour surge)
+targets:
+  # Small General Aviation (2) - Will be dropped
+  - name: "Cessna-N12345"
+    type: "general_aviation"
+    initial_position:
+      range: 45000  # 45 km
+      azimuth: 25
+      elevation: 2
+    velocity: [-50.0, -8.0, 0.0]  # m/s (slow)
+    rcs: 5  # Small aircraft
+    priority: 15
+    track_id: "GA001"
+    expected_outcome: "LOST"
+    
+  - name: "Cessna-N67890"
+    type: "general_aviation"
+    initial_position:
+      range: 50000
+      azimuth: -20
+      elevation: 2
+    velocity: [-45.0, 5.0, 0.0]
+    rcs: 5
+    priority: 15
+    track_id: "GA002"
+    expected_outcome: "LOST"
+    
+  # Business Jets (2) - Will be lost with 5 large aircraft
+  - name: "Gulfstream-G650"
+    type: "business_jet"
+    initial_position:
+      range: 60000
+      azimuth: 10
+      elevation: 4
+    velocity: [-120.0, -20.0, 0.0]
+    rcs: 20
+    priority: 30
+    track_id: "BZ001"
+    expected_outcome: "LOST"  # Now lost with extreme saturation
+    
+  - name: "Citation-X"
+    type: "business_jet"
+    initial_position:
+      range: 55000
+      azimuth: -8
+      elevation: 3
+    velocity: [-110.0, 12.0, 0.0]
+    rcs: 18
+    priority: 30
+    track_id: "BZ002"
+    expected_outcome: "LOST"  # Now lost with extreme saturation
+    
+  # Regional Jets (2) - One degraded, one lost
+  - name: "CRJ-900"
+    type: "regional_jet"
+    initial_position:
+      range: 70000
+      azimuth: 5
+      elevation: 5
+    velocity: [-140.0, -10.0, 0.0]
+    rcs: 40
+    priority: 40
+    track_id: "RJ001"
+    expected_outcome: "DEGRADED"  # Degraded with extreme saturation
+    
+  - name: "Embraer-175"
+    type: "regional_jet"
+    initial_position:
+      range: 65000
+      azimuth: -12
+      elevation: 4
+    velocity: [-135.0, 8.0, 0.0]
+    rcs: 38
+    priority: 40
+    track_id: "RJ002"
+    expected_outcome: "LOST"  # Lost with extreme saturation
+    
+  # Medium Airliners (2) - High priority
+  - name: "United-737"
+    type: "medium_airliner"
+    initial_position:
+      range: 80000
+      azimuth: 0
+      elevation: 6
+    velocity: [-160.0, 0.0, 0.0]
+    rcs: 80
+    priority: 50
+    track_id: "UA001"
+    expected_outcome: "MAINTAINED"
+    passengers: 180
+    
+  - name: "Delta-A320"
+    type: "medium_airliner"
+    initial_position:
+      range: 75000
+      azimuth: 15
+      elevation: 5
+    velocity: [-155.0, -25.0, 0.0]
+    rcs: 75
+    priority: 50
+    track_id: "DL001"
+    expected_outcome: "MAINTAINED"
+    passengers: 165
+    
+  # Large Airliner (1) - Highest priority
+  - name: "American-777"
+    type: "large_airliner"
+    initial_position:
+      range: 85000
+      azimuth: -5
+      elevation: 7
+    velocity: [-170.0, 8.0, 0.0]
+    rcs: 120
+    priority: 55
+    track_id: "AA001"
+    expected_outcome: "MAINTAINED"
+    passengers: 350
+    
+  # Medical Helicopter (1) - Eventually lost
+  - name: "MedEvac-1"
+    type: "helicopter"
+    initial_position:
+      range: 30000
+      azimuth: 30
+      elevation: 1
+    velocity: [-40.0, -10.0, 0.0]
+    rcs: 10
+    priority: 25
+    track_id: "ME001"
+    expected_outcome: "LOST"
+
+# Visualization configuration
+visualization:
+  enabled: true
+  
+  panels:
+    - type: "airport_radar_picture"
+      position: "left"
+      show_elements:
+        - airport_runways
+        - approach_corridors
+        - aircraft_symbols  # Sized by RCS
+        - track_status_colors
+        - range_rings_25km
+        - rush_hour_marker
+        
+    - type: "track_quality_evolution"
+      position: "top_right"
+      show_elements:
+        - all_track_qualities_vs_time
+        - rush_hour_event_marker  # t=30s
+        - quality_thresholds
+        - aircraft_labels
+        
+    - type: "resource_allocation"
+      position: "bottom_right"
+      show_elements:
+        - aircraft_size_allocation
+        - passenger_load_statistics
+        - track_statistics_bar
+
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/atc_airport_rush_hour"
+  
+  metrics:
+    - "track_quality_evolution"
+    - "resource_allocation_by_size"
+    - "passenger_aircraft_priority"
+    - "general_aviation_impact"
+    - "safety_metrics"
+    
+  expected_outcomes:
+    initial_tracks: 10
+    rush_hour_arrivals: 5  # Now 5 large aircraft
+    final_active_tracks: 9  # Lost 6 small/medium, gained 5 large
+    tracks_lost: 6  # 2 Cessnas + 1 helicopter + 2 business jets + 1 regional
+    degraded_tracks: 2  # Medium airliners now degraded
+    resource_to_large_aircraft: 0.90  # 90% to heavy/super-heavy (75%+15%)
+    safety_maintained: false  # Some passenger aircraft may degrade
+    
+  safety_analysis:
+    passenger_aircraft_tracking: "85%"  # Some smaller passenger aircraft degraded
+    general_aviation_impact: "CRITICAL"  # Small aircraft completely abandoned
+    separation_maintained: true
+    priority_justification: "Passenger safety first"
+    
+environment:
+  temperature: 20  # Celsius
+  pressure: 1013  # hPa
+  humidity: 65  # percent
+  weather: "clear"
+  visibility: 10  # km
+  wind: [5, 10]  # m/s from west
+  
+clutter:
+  ground_clutter:
+    enabled: true
+    model: "weibull"
+    urban_environment: true  # Buildings near airport
+  
+  weather_clutter:
+    enabled: false  # Clear weather
