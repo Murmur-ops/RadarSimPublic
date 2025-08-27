@@ -222,14 +222,14 @@ class DistributedTrackFusion:
             # Optimize for multiple tracks
             weights = self._optimal_omega_multi_tracks([t.covariance for t in tracks])
         
-        # Perform fusion
-        P_fused_inv = np.zeros_like(tracks[0].covariance)
-        x_fused_weighted = np.zeros_like(tracks[0].state)
+        # Perform fusion - ensure float64 dtype
+        P_fused_inv = np.zeros_like(tracks[0].covariance, dtype=np.float64)
+        x_fused_weighted = np.zeros_like(tracks[0].state, dtype=np.float64)
         
         for i, track in enumerate(tracks):
-            P_inv = np.linalg.inv(track.covariance)
+            P_inv = np.linalg.inv(track.covariance.astype(np.float64))
             P_fused_inv += weights[i] * P_inv
-            x_fused_weighted += weights[i] * P_inv @ track.state
+            x_fused_weighted += weights[i] * P_inv @ track.state.astype(np.float64)
         
         P_fused = np.linalg.inv(P_fused_inv)
         x_fused = P_fused @ x_fused_weighted
@@ -273,13 +273,13 @@ class DistributedTrackFusion:
         if len(tracks) == 1:
             return tracks[0]
         
-        # Convert to information form
-        Y_total = np.zeros_like(tracks[0].covariance)
-        y_total = np.zeros_like(tracks[0].state)
+        # Convert to information form - ensure float64 dtype
+        Y_total = np.zeros_like(tracks[0].covariance, dtype=np.float64)
+        y_total = np.zeros_like(tracks[0].state, dtype=np.float64)
         
         for track in tracks:
-            Y = np.linalg.inv(track.covariance)  # Information matrix
-            y = Y @ track.state  # Information vector
+            Y = np.linalg.inv(track.covariance.astype(np.float64))  # Information matrix
+            y = Y @ track.state.astype(np.float64)  # Information vector
             Y_total += Y
             y_total += y
         
