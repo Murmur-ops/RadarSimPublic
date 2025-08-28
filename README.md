@@ -1,6 +1,6 @@
 # RadarSim - Clean Repository
 
-A comprehensive radar simulation framework for modeling detection, tracking, jamming, and networked radar systems. This is a cleaned and organized version of the repository for easier navigation.
+A comprehensive radar simulation framework for modeling detection, tracking, signal processing, and multi-sensor systems. Suitable for research, education, and development of radar algorithms. This is a cleaned and organized version of the repository for easier navigation.
 
 ## Key Features
 
@@ -20,11 +20,11 @@ A comprehensive radar simulation framework for modeling detection, tracking, jam
 - **Ensemble Classifier**: Combined 192-dimensional feature vector processing
 - **Real-time Performance**: <10ms inference latency
 
-#### Threat Classification
-- **CRITICAL**: Anti-ship missiles (PW ≤ 2μs, PRF > 500Hz)
-- **HIGH**: Fighter aircraft (frequency agile, PW 5-20μs)  
-- **MEDIUM**: Helicopters/patrol aircraft (blade modulation detection)
-- **LOW**: Commercial/navigation (PW > 500μs, PRF < 30Hz)
+#### Object Classification
+- **HIGH PRIORITY**: Fast-moving objects (high velocity, maneuvering)
+- **MEDIUM PRIORITY**: Moderate speed objects (steady trajectory)  
+- **LOW PRIORITY**: Slow-moving objects (predictable paths)
+- **BACKGROUND**: Environmental returns and stationary objects
 
 ### **Signal Processing**
 
@@ -48,16 +48,16 @@ Clutter → Thermal Noise → Receiver Impairments → ADC Quantization
    - CFAR detection
    - Beam scheduling and resource management
 
-2. **Target Modeling**
+2. **Object Modeling**
    - Swerling RCS fluctuation models (0, 1, 2, 3, 4)
-   - Complex motion patterns (weaving, pop-up, terminal guidance)
+   - Complex motion patterns (acceleration, turning, altitude changes)
    - Micro-Doppler signatures
 
-3. **Electronic Warfare**
-   - Coherent jamming (DRFM-based)
-   - Range/velocity gate pull-off
-   - False target injection
-   - Cooperative jamming networks
+3. **Signal Processing & Interference**
+   - Coherent signal processing (DRFM-based)
+   - Advanced filtering techniques
+   - Signal enhancement and noise reduction
+   - Multi-path and interference modeling
 
 4. **Environmental Effects**
    - Atmospheric propagation
@@ -71,12 +71,12 @@ Clutter → Thermal Noise → Receiver Impairments → ADC Quantization
 RadarSim/
 ├── src/                      # Core simulation modules
 │   ├── radar.py             # Radar system implementation
-│   ├── target.py            # Target modeling
+│   ├── target.py            # Object modeling
 │   ├── signal.py            # Signal processing
 │   ├── tracking/            # Tracking algorithms (IMM, Kalman filters)
-│   ├── jamming/             # Electronic warfare (DRFM, false targets)
-│   ├── networked_radar/     # Multi-radar coordination
-│   ├── classification/      # Target classification & signatures
+│   ├── jamming/             # Signal interference modeling
+│   ├── networked_radar/     # Multi-sensor coordination
+│   ├── classification/      # Object classification & signatures
 │   └── resource_management/ # Beam scheduling & prioritization
 │
 ├── configs/                  # Configuration files
@@ -84,9 +84,9 @@ RadarSim/
 │   └── priorities/          # Priority configurations
 │
 ├── demos/                    # Demonstration scripts
-│   ├── basic_jamming_demo.py
+│   ├── basic_signal_processing_demo.py
 │   ├── networked_radar_simple.py
-│   └── missile_salvo_visualization.py
+│   └── multi_target_tracking_demo.py
 │
 ├── getting_started/          # Tutorial materials
 │   ├── simple_demo.py       # Basic example script
@@ -246,11 +246,11 @@ RadarSim/
 
 ## Example Use Cases
 
-1. **Naval Defense**: Multi-missile engagement with ECM
-2. **Air Defense**: Fighter intercept with jamming
-3. **Surveillance**: Wide-area search with classification
-4. **Training**: Generate labeled IQ data for ML models
-5. **Algorithm Development**: Test tracking and detection algorithms
+1. **Air Traffic Control**: Multi-aircraft tracking and identification
+2. **Automotive Radar**: Object detection for autonomous vehicles
+3. **Weather Monitoring**: Atmospheric phenomena detection and tracking
+4. **Research & Development**: Algorithm testing and validation
+5. **Education**: Teaching radar signal processing concepts
 
 ## Dependencies
 
@@ -321,7 +321,7 @@ If you use RadarSim in your research, please cite:
 ```bibtex
 @software{radarsim2024,
   title={RadarSim: Advanced Radar Simulation with Machine Learning},
-  author={Your Name},
+  author={Max Burnett},
   year={2024},
   url={https://github.com/Murmur-ops/RadarSimPublic}
 }
