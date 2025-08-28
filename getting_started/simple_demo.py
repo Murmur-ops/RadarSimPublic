@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.radar import Radar, RadarParameters
-from src.target import Target
+from src.target import Target, TargetType, TargetMotion
 
 def radar_equation(power, gain, wavelength, sigma, range_m, losses=1.0):
     """
@@ -29,14 +29,14 @@ def radar_equation(power, gain, wavelength, sigma, range_m, losses=1.0):
 def calculate_snr(radar_params, target, noise_temp=290):
     """Calculate SNR for a target"""
     # Get range to target
-    range_m = np.linalg.norm(target.position)
+    range_m = np.linalg.norm(target.motion.position)
     
     # Received power
     pr = radar_equation(
         radar_params.power,
         radar_params.antenna_gain,
         radar_params.wavelength,
-        target.rcs,
+        target.rcs_mean,
         range_m,
         radar_params.losses
     )
@@ -81,31 +81,35 @@ def main():
     print("\n2. Creating targets...")
     targets = [
         Target(
-            target_id="Aircraft-1",
-            position=np.array([10000.0, 5000.0, 3000.0]),
-            velocity=np.array([-200.0, 0.0, 0.0]),
+            target_type=TargetType.AIRCRAFT,
             rcs=10.0,
-            target_type="aircraft"
+            motion=TargetMotion(
+                position=np.array([10000.0, 5000.0, 3000.0]),
+                velocity=np.array([-200.0, 0.0, 0.0])
+            )
         ),
         Target(
-            target_id="Aircraft-2",
-            position=np.array([25000.0, 10000.0, 8000.0]),
-            velocity=np.array([-150.0, -50.0, 0.0]),
+            target_type=TargetType.AIRCRAFT,
             rcs=50.0,
-            target_type="aircraft"
+            motion=TargetMotion(
+                position=np.array([25000.0, 10000.0, 8000.0]),
+                velocity=np.array([-150.0, -50.0, 0.0])
+            )
         ),
         Target(
-            target_id="Missile",
-            position=np.array([5000.0, 2000.0, 1000.0]),
-            velocity=np.array([-300.0, 0.0, 0.0]),
+            target_type=TargetType.MISSILE,
             rcs=0.1,
-            target_type="missile"
+            motion=TargetMotion(
+                position=np.array([5000.0, 2000.0, 1000.0]),
+                velocity=np.array([-300.0, 0.0, 0.0])
+            )
         )
     ]
     
-    for target in targets:
-        range_km = np.linalg.norm(target.position) / 1000
-        print(f"   {target.target_id}: Range={range_km:.1f} km, RCS={target.rcs} m²")
+    target_names = ["Aircraft-1", "Aircraft-2", "Missile"]
+    for target, name in zip(targets, target_names):
+        range_km = np.linalg.norm(target.motion.position) / 1000
+        print(f"   {name}: Range={range_km:.1f} km, RCS={target.rcs_mean} m²")
     
     # Simulate detection over time
     print("\n3. Running detection simulation...")
@@ -116,33 +120,33 @@ def main():
     detection_threshold = 13.0  # 13 dB SNR
     
     # Storage
-    detection_history = {target.target_id: [] for target in targets}
-    range_history = {target.target_id: [] for target in targets}
-    snr_history = {target.target_id: [] for target in targets}
+    detection_history = {name: [] for name in target_names}
+    range_history = {name: [] for name in target_names}
+    snr_history = {name: [] for name in target_names}
     
     for step in range(num_steps):
         time = step * dt
         
-        for target in targets:
+        for target, name in zip(targets, target_names):
             # Update position
-            target.position = target.position + target.velocity * dt
+            target.motion.position = target.motion.position + target.motion.velocity * dt
             
             # Calculate SNR
             snr = calculate_snr(params, target)
             
             # Store data
-            range_km = np.linalg.norm(target.position) / 1000
-            range_history[target.target_id].append(range_km)
-            snr_history[target.target_id].append(snr)
-            detection_history[target.target_id].append(snr > detection_threshold)
+            range_km = np.linalg.norm(target.motion.position) / 1000
+            range_history[name].append(range_km)
+            snr_history[name].append(snr)
+            detection_history[name].append(snr > detection_threshold)
     
     # Print detection statistics
     print("\n4. Detection Statistics:")
-    for target in targets:
-        detections = sum(detection_history[target.target_id])
+    for target, name in zip(targets, target_names):
+        detections = sum(detection_history[name])
         rate = 100 * detections / num_steps
-        avg_snr = np.mean(snr_history[target.target_id])
-        print(f"   {target.target_id}:")
+        avg_snr = np.mean(snr_history[name])
+        print(f"   {name}:")
         print(f"     Detection rate: {rate:.1f}%")
         print(f"     Average SNR: {avg_snr:.1f} dB")
     
@@ -154,9 +158,9 @@ def main():
     
     # Plot 1: SNR vs Time
     ax = axes[0, 0]
-    for target in targets:
-        ax.plot(time_vec, snr_history[target.target_id], 
-               label=target.target_id, linewidth=2)
+    for name in target_names:
+        ax.plot(time_vec, snr_history[name], 
+               label=name, linewidth=2)
     ax.axhline(y=detection_threshold, color='red', linestyle='--', 
               label='Detection Threshold')
     ax.set_xlabel('Time (s)')
@@ -167,9 +171,9 @@ def main():
     
     # Plot 2: Range vs Time
     ax = axes[0, 1]
-    for target in targets:
-        ax.plot(time_vec, range_history[target.target_id], 
-               label=target.target_id, linewidth=2)
+    for name in target_names:
+        ax.plot(time_vec, range_history[name], 
+               label=name, linewidth=2)
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Range (km)')
     ax.set_title('Target Range')
@@ -179,15 +183,15 @@ def main():
     # Plot 3: Detection Status
     ax = axes[1, 0]
     y_positions = list(range(len(targets)))
-    for i, target in enumerate(targets):
-        detections = detection_history[target.target_id]
+    for i, name in enumerate(target_names):
+        detections = detection_history[name]
         detect_times = [t for t, d in zip(time_vec, detections) if d]
         ax.scatter(detect_times, [i] * len(detect_times), 
-                  label=target.target_id, s=20, alpha=0.6)
+                  label=name, s=20, alpha=0.6)
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Target')
     ax.set_yticks(y_positions)
-    ax.set_yticklabels([t.target_id for t in targets])
+    ax.set_yticklabels(target_names)
     ax.set_title('Detection Events')
     ax.grid(True, alpha=0.3)
     ax.set_xlim(0, simulation_time)
@@ -205,9 +209,9 @@ def main():
     info_text += f"Detection Threshold: {detection_threshold} dB\n\n"
     info_text += "Detection Results:\n"
     
-    for target in targets:
-        rate = 100 * sum(detection_history[target.target_id]) / num_steps
-        info_text += f"{target.target_id}: {rate:.0f}%\n"
+    for name in target_names:
+        rate = 100 * sum(detection_history[name]) / num_steps
+        info_text += f"{name}: {rate:.0f}%\n"
     
     ax.text(0.1, 0.5, info_text, fontsize=10, family='monospace',
            verticalalignment='center')
