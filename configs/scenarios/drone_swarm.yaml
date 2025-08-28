@@ -1,0 +1,133 @@
+# Drone Swarm Scenario
+# Multiple small UAVs with coordinated jamming
+
+scenario:
+  name: "Counter-UAS with Swarm Jamming"
+  description: "Detecting small drones using coordinated jamming"
+  duration: 120.0
+  time_step: 0.1
+
+radar:
+  type: "counter_uas"
+  parameters:
+    frequency: 24.0e9  # K-band for small target detection
+    power: 100  # Lower power, shorter range
+    antenna_gain: 30
+    pulse_width: 0.1e-6
+    prf: 5000
+    bandwidth: 100.0e6  # Wide bandwidth for resolution
+    noise_figure: 5
+    losses: 4
+    
+  processing:
+    range_resolution: 5
+    max_range: 10000  # 10km max range
+    velocity_resolution: 0.25
+    n_doppler_bins: 256
+    detection_threshold: 8  # Lower threshold for small targets
+    enable_micro_doppler: true  # Detect rotor blades
+
+targets:
+  - name: "Scout-Drone-1"
+    type: "quadcopter"
+    initial_position:
+      range: 8000
+      azimuth: 0
+      elevation: 20
+    velocity: 15
+    rcs: 0.01  # Very small
+    maneuver:
+      type: "hover_and_dash"
+      hover_time: 5
+      dash_speed: 30
+      
+  - name: "Scout-Drone-2"
+    type: "quadcopter"
+    initial_position:
+      range: 7500
+      azimuth: 10
+      elevation: 25
+    velocity: 15
+    rcs: 0.01
+    
+  - name: "Attack-Drone-1"
+    type: "fixed_wing_uav"
+    initial_position:
+      range: 9000
+      azimuth: -5
+      elevation: 30
+    velocity: 25
+    rcs: 0.05
+    
+  - name: "Attack-Drone-2"
+    type: "fixed_wing_uav"
+    initial_position:
+      range: 9500
+      azimuth: 5
+      elevation: 35
+    velocity: 25
+    rcs: 0.05
+
+jammers:
+  - name: "Swarm-Jammer-1"
+    type: "cooperative"
+    platform: "Scout-Drone-1"
+    parameters:
+      power: 1  # Very low power
+      antenna_gain: 3
+      technique: "synchronized_blinking"
+      blink_rate: 10  # Hz
+      coordination:
+        mode: "time_synchronized"
+        group: "swarm_alpha"
+        
+  - name: "Swarm-Jammer-2"
+    type: "cooperative"
+    platform: "Scout-Drone-2"
+    parameters:
+      power: 1
+      antenna_gain: 3
+      technique: "synchronized_blinking"
+      blink_rate: 10
+      coordination:
+        mode: "time_synchronized"
+        group: "swarm_alpha"
+        phase_offset: 180  # degrees
+        
+  - name: "Attack-Jammer-1"
+    type: "smart_noise"
+    platform: "Attack-Drone-1"
+    parameters:
+      power: 5
+      antenna_gain: 6
+      technique: "cognitive"
+      learning_rate: 0.1
+      adapt_to: "radar_waveform"
+
+environment:
+  temperature: 25
+  pressure: 1013
+  humidity: 60
+  weather: "clear"
+  terrain: "urban"
+  
+clutter:
+  urban_clutter:
+    enabled: true
+    building_density: "medium"
+    average_height: 30  # meters
+    
+  vegetation_clutter:
+    enabled: true
+    type: "trees"
+    density: "sparse"
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/drone_swarm"
+  metrics:
+    - "individual_drone_pd"
+    - "swarm_centroid_tracking"
+    - "classification_accuracy"
+    - "jamming_coordination_effectiveness"

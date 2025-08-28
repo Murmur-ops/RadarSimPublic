@@ -1,0 +1,285 @@
+# Cooperative DRFM Jamming Scenario
+# Demonstrates advanced jamming techniques including DRFM, false targets,
+# gate pull-off, and cooperative jamming tactics
+
+scenario:
+  name: "Cooperative DRFM Jamming"
+  description: "Multi-platform coordinated jamming with DRFM and false targets"
+  duration: 60.0  # seconds
+  time_step: 0.01  # 10ms for high-fidelity jamming simulation
+  
+radar:
+  type: "phased_array"
+  parameters:
+    frequency: 10.0e9  # X-band
+    power: 1.0e6  # 1 MW peak power
+    antenna_gain: 40  # dB
+    pulse_width: 1.0e-6  # 1 microsecond
+    prf: 3000  # High PRF for Doppler processing
+    bandwidth: 50.0e6  # 50 MHz for high range resolution
+    noise_figure: 2.5  # dB
+    losses: 3  # dB
+    
+  processing:
+    range_resolution: 3  # meters (c/2B)
+    max_range: 100000  # 100 km
+    velocity_resolution: 0.5  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 10  # dB SNR
+    cfar_guard_cells: 5
+    cfar_training_cells: 20
+    
+  eccm:
+    enabled: true
+    techniques:
+      - "frequency_agility"
+      - "pulse_compression"
+      - "sidelobe_blanking"
+      - "jamming_detection"
+    
+targets:
+  # Primary strike package
+  - name: "Strike-Lead"
+    type: "fighter"
+    initial_position:
+      range: 50000  # 50 km
+      azimuth: 30
+      elevation: 10
+    velocity: -300  # 300 m/s inbound
+    rcs: 5  # m^2
+    maneuver:
+      type: "tactical"
+      g_limit: 9
+      
+  - name: "Strike-Wing"
+    type: "fighter"
+    initial_position:
+      range: 52000
+      azimuth: 33
+      elevation: 10
+    velocity: -300
+    rcs: 5
+    formation:
+      lead: "Strike-Lead"
+      offset: [500, 200, 0]  # meters [x, y, z]
+      
+jammers:
+  # Standoff Jammer (EA-18G Growler type)
+  - name: "Growler-1"
+    type: "drfm"
+    platform: "standoff_aircraft"
+    initial_position:
+      range: 80000  # 80 km standoff
+      azimuth: 35
+      elevation: 15
+    velocity: -50  # Loitering
+    
+    drfm_parameters:
+      memory_depth: 1000000  # samples
+      sample_rate: 2.0e9  # 2 GS/s
+      bit_depth: 12
+      processing_delay: 0.5e-6  # 500 ns DRFM delay
+      
+    techniques:
+      false_targets:
+        enabled: true
+        mode: "coordinated"
+        parameters:
+          num_targets: 5
+          range_spread: 2000  # meters
+          velocity_spread: 100  # m/s
+          power_distribution: "decreasing"
+          update_rate: 100  # Hz
+          
+      gate_pull_off:
+        enabled: true
+        type: "range_velocity"
+        parameters:
+          range_pull_rate: 200  # m/s
+          velocity_pull_rate: 50  # m/s/s
+          profile: "s_curve"
+          activation_range: 60000  # meters
+          
+      cover_pulse:
+        enabled: true
+        advance_time: 0.3e-6
+        amplitude_factor: 1.5
+        
+    power_management:
+      total_power: 200  # Watts
+      antenna_gain: 20  # dB
+      allocation:
+        noise: 30  # percent
+        false_targets: 50
+        gate_pull_off: 20
+        
+  # Escort Jammer (ALQ-99 pod type)
+  - name: "Escort-Pod"
+    type: "drfm"
+    platform: "fighter_pod"
+    attached_to: "Strike-Lead"  # Mounted on strike lead
+    
+    drfm_parameters:
+      memory_depth: 500000
+      sample_rate: 1.0e9
+      bit_depth: 10
+      processing_delay: 1.0e-6
+      
+    techniques:
+      false_targets:
+        enabled: true
+        mode: "reactive"
+        parameters:
+          num_targets: 3
+          range_offset: [-500, 0, 500]  # meters relative
+          velocity_matching: true
+          
+      cross_eye:
+        enabled: true
+        partner_jammer: "Self-Protect-1"  # Cooperative with onboard
+        separation: 15  # meters (wingspan)
+        phase_control: "adaptive"
+        
+    power_management:
+      total_power: 100
+      antenna_gain: 15
+      
+  # Self-Protection Jammer (integrated EW suite)
+  - name: "Self-Protect-1"
+    type: "drfm"
+    platform: "integrated"
+    attached_to: "Strike-Lead"
+    
+    drfm_parameters:
+      memory_depth: 100000
+      sample_rate: 500.0e6
+      bit_depth: 8
+      processing_delay: 2.0e-6
+      
+    techniques:
+      last_ditch:
+        enabled: true
+        activation_range: 15000  # meters
+        mode: "saturation"
+        
+      towed_decoy:
+        enabled: true
+        cable_length: 100  # meters
+        rcs_enhancement: 10  # dB
+        
+cooperative_tactics:
+  coordination:
+    mode: "networked"
+    datalink:
+      type: "Link-16"
+      update_rate: 10  # Hz
+      latency: 0.01  # seconds
+      
+  synchronized_operations:
+    blinking:
+      enabled: true
+      pattern: "complementary"
+      frequency: 10  # Hz
+      duty_cycles:
+        Growler-1: [1,0,1,0,1,0,1,0]
+        Escort-Pod: [0,1,0,1,0,1,0,1]
+        Self-Protect-1: [1,1,0,0,1,1,0,0]
+        
+    false_target_coordination:
+      enabled: true
+      mode: "layered"
+      parameters:
+        outer_layer: "Growler-1"  # Long range false targets
+        middle_layer: "Escort-Pod"  # Medium range
+        inner_layer: "Self-Protect-1"  # Close-in defense
+        
+    technique_sequencing:
+      - time: 0
+        jammer: "Growler-1"
+        technique: "noise"
+        
+      - time: 5
+        jammer: "Growler-1"
+        technique: "false_targets"
+        
+      - time: 10
+        jammer: "Escort-Pod"
+        technique: "gate_pull_off"
+        
+      - time: 20
+        jammer: "all"
+        technique: "synchronized_false_targets"
+        
+      - time: 30
+        jammer: "Escort-Pod"
+        technique: "cross_eye"
+        
+      - time: 40
+        jammer: "Self-Protect-1"
+        technique: "last_ditch"
+        
+mission_profile:
+  phases:
+    - name: "Ingress"
+      time: [0, 20]
+      objective: "Degrade early warning"
+      primary_jammer: "Growler-1"
+      
+    - name: "Penetration"
+      time: [20, 40]
+      objective: "Break radar lock"
+      primary_jammer: "Escort-Pod"
+      
+    - name: "Terminal"
+      time: [40, 60]
+      objective: "Defeat terminal guidance"
+      primary_jammer: "Self-Protect-1"
+      
+effectiveness_metrics:
+  tracking:
+    - "probability_of_detection"
+    - "track_initiation_time"
+    - "track_accuracy_rms"
+    - "break_lock_events"
+    
+  jamming:
+    - "js_ratio"
+    - "burn_through_range"
+    - "false_target_credibility"
+    - "angle_deception_error"
+    
+  mission:
+    - "time_to_detection"
+    - "engagement_envelope_reduction"
+    - "mission_success_probability"
+    
+analysis:
+  monte_carlo:
+    enabled: true
+    runs: 100
+    variations:
+      - "jammer_power"
+      - "false_target_positions"
+      - "timing_offsets"
+      
+  performance_bounds:
+    minimum_js_ratio: 10  # dB for effectiveness
+    maximum_angle_error: 5  # degrees for break lock
+    false_target_discrimination_time: 5  # seconds
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/cooperative_drfm"
+  
+  visualizations:
+    - "range_doppler_map"
+    - "jamming_timeline"
+    - "false_target_evolution"
+    - "js_ratio_heatmap"
+    - "track_quality_degradation"
+    
+  reports:
+    - "engagement_summary"
+    - "jamming_effectiveness"
+    - "eccm_vs_ecm_analysis"

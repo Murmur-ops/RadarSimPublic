@@ -1,0 +1,318 @@
+# Missile Salvo Impact on Radar Tracking
+# Reproduces the exact scenario showing track dropping due to resource saturation
+# Key event: 3-missile pincer attack at t=30s causing 6 track losses
+
+scenario:
+  name: "Missile Salvo Impact on Radar Tracking"
+  description: "3-Missile Pincer Attack from Multiple Vectors"
+  duration: 80.0
+  time_step: 0.5
+  
+  # Critical event - missile salvo launch
+  events:
+    - time: 30.0
+      type: "missile_salvo_launch"
+      description: "SALVO DETECTED - Launch 3-missile pincer attack"
+      parameters:
+        attack_pattern: "pincer"
+        missiles:
+          - name: "Vampire-1"
+            launch_position: [55.0, 35.0]  # North vector
+            target_position: [0.0, 0.0]     # Radar position
+            velocity: 350  # m/s
+            rcs: 0.1
+          - name: "Vampire-2" 
+            launch_position: [50.0, 0.0]   # Center (behind fighters)
+            target_position: [0.0, 0.0]
+            velocity: 380  # m/s
+            rcs: 0.1
+          - name: "Vampire-3"
+            launch_position: [60.0, -40.0]  # South vector
+            target_position: [0.0, 0.0]
+            velocity: 340  # m/s
+            rcs: 0.1
+
+radar:
+  type: "naval_3d_phased_array"
+  position: [0.0, 0.0, 0.0]  # Ship at origin
+  
+  parameters:
+    frequency: 3.0e9  # S-band
+    power: 8000  # Watts
+    antenna_gain: 38  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1500  # Hz
+    bandwidth: 15.0e6  # Hz
+    noise_figure: 3.5  # dB
+    losses: 2.5  # dB
+    
+  processing:
+    range_resolution: 30  # meters
+    max_range: 120000  # 120 km
+    velocity_resolution: 0.8  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 11  # dB above noise
+    cfar_guard_cells: 4
+    cfar_training_cells: 16
+    
+  tracking:
+    filter_type: "jpda"  # Joint Probabilistic Data Association
+    max_tracks: 30
+    track_initiation_threshold: 2  # detections
+    track_termination_threshold: 5  # missed detections
+    
+    # Critical for track dropping
+    track_quality_thresholds:
+      excellent: 1.0
+      good: 0.8
+      fair: 0.6
+      poor: 0.4
+      drop: 0.2  # Tracks dropped below this threshold
+      
+    # Quality degradation when resource-starved
+    quality_degradation_rates:
+      missile: 0.0  # No degradation for high-priority missiles
+      fighter: 0.02  # Slow degradation
+      military: 0.05  # Moderate degradation  
+      commercial: 0.08  # Fast degradation (8% per second)
+      
+  resource_management:
+    enabled: true
+    total_beam_budget: 1.0  # seconds per scan
+    
+    # Pre-salvo allocation (balanced)
+    normal_allocation:
+      commercial: 0.3
+      fighter: 0.3
+      military: 0.2
+      search: 0.2
+      
+    # Post-salvo allocation (missile-focused)
+    salvo_allocation:
+      missile: 0.80  # 80% to missiles
+      fighter: 0.10  # 10% to fighters
+      military: 0.07  # 7% to other military
+      commercial: 0.03  # 3% to commercial (severely starved)
+      
+    # Beam steering overhead for pincer attack
+    pincer_penalty_factor: 1.5  # 50% overhead for wide angular separation
+
+# Initial 10 targets before missile launch
+targets:
+  # Commercial Aircraft (3) - Will be dropped
+  - name: "Commercial-747"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 80000  # 80 km
+      azimuth: 20
+      elevation: 5
+    velocity: [-150.0, 0.0, 0.0]  # m/s
+    rcs: 50  # m^2
+    priority: 20
+    track_id: "T001"
+    expected_outcome: "LOST"  # Track will be lost after salvo
+    
+  - name: "Commercial-A320"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 90000  # 90 km
+      azimuth: -15
+      elevation: 6
+    velocity: [-120.0, 10.0, 0.0]
+    rcs: 40
+    priority: 20
+    track_id: "T002"
+    expected_outcome: "LOST"
+    
+  - name: "Commercial-B737"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 100000  # 100 km
+      azimuth: 5
+      elevation: 7
+    velocity: [-140.0, 0.0, 0.0]
+    rcs: 45
+    priority: 20
+    track_id: "T003"
+    expected_outcome: "LOST"
+    
+  # Fighter Screen (4) - Will be degraded but maintained
+  - name: "Fighter-F16"
+    type: "fighter"
+    initial_position:
+      range: 45000  # 45 km (in screen zone)
+      azimuth: 8
+      elevation: 3
+    velocity: [-200.0, -5.0, 0.0]
+    rcs: 5
+    priority: 40
+    track_id: "T004"
+    expected_outcome: "DEGRADED"
+    
+  - name: "Fighter-F35"
+    type: "fighter"
+    initial_position:
+      range: 48000  # 48 km
+      azimuth: -6
+      elevation: 3
+    velocity: [-220.0, 3.0, 0.0]
+    rcs: 3
+    priority: 40
+    track_id: "T005"
+    expected_outcome: "DEGRADED"
+    
+  - name: "Fighter-F18"
+    type: "fighter"
+    initial_position:
+      range: 50000  # 50 km
+      azimuth: 12
+      elevation: 4
+    velocity: [-210.0, -8.0, 0.0]
+    rcs: 4
+    priority: 40
+    track_id: "T006"
+    expected_outcome: "DEGRADED"
+    
+  - name: "Fighter-F22"
+    type: "fighter"
+    initial_position:
+      range: 43000  # 43 km
+      azimuth: -10
+      elevation: 3
+    velocity: [-230.0, 5.0, 0.0]
+    rcs: 2
+    priority: 45
+    track_id: "T007"
+    expected_outcome: "MAINTAINED"  # Highest priority fighter
+    
+  # Other Military (3) - Mixed outcomes
+  - name: "Helicopter-MH60"
+    type: "helicopter"
+    initial_position:
+      range: 40000  # 40 km
+      azimuth: -25
+      elevation: 1
+    velocity: [-50.0, 5.0, 0.0]
+    rcs: 10
+    priority: 30
+    track_id: "T008"
+    expected_outcome: "LOST"
+    
+  - name: "Drone-MQ9"
+    type: "drone"
+    initial_position:
+      range: 70000  # 70 km
+      azimuth: 35
+      elevation: 8
+    velocity: [-80.0, 0.0, 0.0]
+    rcs: 2
+    priority: 35
+    track_id: "T009"
+    expected_outcome: "LOST"
+    
+  - name: "Transport-C130"
+    type: "transport"
+    initial_position:
+      range: 95000  # 95 km
+      azimuth: -30
+      elevation: 5
+    velocity: [-100.0, -10.0, 0.0]
+    rcs: 100
+    priority: 25
+    track_id: "T010"
+    expected_outcome: "LOST"
+
+# Visualization and output configuration
+visualization:
+  enabled: true
+  
+  # Three-panel layout matching the image
+  panels:
+    - type: "radar_picture"
+      position: "top_left"
+      show_elements:
+        - targets
+        - missiles
+        - fighter_screen_zone
+        - salvo_detection_marker
+        - track_status_colors  # Green=tracked, Yellow=degraded, Red=lost
+        
+    - type: "statistics"
+      position: "top_right"
+      show_elements:
+        - track_statistics_bar  # Initial/Active/Degraded/Lost/Missiles
+        - resource_allocation_pie  # 80% missiles, etc.
+        
+    - type: "track_quality_evolution"
+      position: "bottom"
+      show_elements:
+        - all_track_qualities_vs_time
+        - salvo_launch_marker
+        - quality_thresholds  # Good/Fair/Drop lines
+        - track_labels
+
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/missile_salvo_impact"
+  
+  metrics:
+    - "track_quality_evolution"  # Quality vs time for all tracks
+    - "track_loss_timeline"  # When each track was lost
+    - "resource_allocation_history"  # How resources shifted
+    - "track_statistics"  # Initial/Active/Degraded/Lost counts
+    - "detection_probability_by_target"
+    - "beam_steering_overhead"
+    
+  # Expected results to validate
+  expected_outcomes:
+    initial_tracks: 10
+    final_active_tracks: 4  # F22 + 3 missiles
+    degraded_tracks: 0  # In final state
+    lost_tracks: 6  # 3 commercial + helicopter + drone + transport
+    missile_tracks: 3  # All vampires tracked
+    resource_to_missiles: 0.80  # 80% allocation
+    
+  # Track quality evolution key points
+  quality_checkpoints:
+    - time: 0.0
+      description: "All tracks good quality"
+      commercial_quality: 0.85
+      fighter_quality: 0.90
+      
+    - time: 30.0
+      description: "SALVO DETECTED - resource reallocation begins"
+      event: "salvo_launch"
+      
+    - time: 35.0
+      description: "Commercial tracks degrading rapidly"
+      commercial_quality: 0.40
+      fighter_quality: 0.75
+      
+    - time: 40.0
+      description: "First tracks dropped (commercial)"
+      commercial_quality: 0.18  # Below drop threshold
+      tracks_lost: ["Commercial-747", "Commercial-A320"]
+      
+    - time: 45.0
+      description: "Additional track losses"
+      tracks_lost: ["Commercial-B737", "Helicopter-MH60", "Drone-MQ9"]
+      
+    - time: 50.0
+      description: "Steady state - missiles tracked, fighters degraded"
+      missile_quality: 0.95
+      fighter_quality: 0.55
+      commercial_quality: 0.15  # All dropped
+      
+environment:
+  temperature: 18  # Celsius
+  pressure: 1015  # hPa
+  humidity: 75  # percent
+  weather: "partly_cloudy"
+  sea_state: 3  # Moderate waves
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 3

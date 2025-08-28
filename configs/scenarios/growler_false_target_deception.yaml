@@ -1,0 +1,387 @@
+# Growler Electronic Warfare - False Target Deception Attack
+# EA-18G Growler generates false targets that exploit radar's threat prioritization
+# One real missile hidden among multiple false high-priority targets
+#
+# PHYSICS CONSTRAINTS OF FALSE TARGET GENERATION:
+# 1. False targets can only appear within the jamming beam directed at the radar
+# 2. The jammer creates false targets by retransmitting modified radar pulses
+# 3. Range deception: DRFM delays signals to make targets appear at different ranges
+# 4. Velocity deception: Doppler shift manipulation to fake target speeds
+# 5. All false targets appear along the bearing from radar to jammer (±beam width)
+# 6. Cannot create targets outside the jamming antenna's beam coverage
+#
+# This simulation correctly models these physics - all false targets are 
+# positioned within the Growler's jamming cone pointing at the radar
+
+scenario:
+  name: "Growler False Target Deception Attack"
+  description: "EA-18G Growler generates false missile targets to saturate radar tracking"
+  duration: 80.0
+  time_step: 0.5
+  
+  # Coordinated electronic attack sequence
+  events:
+    # Phase 1: Growler begins false target generation
+    - time: 28.0
+      type: "electronic_warfare_attack"
+      description: "Growler initiates false target generation"
+      parameters:
+        platform: "Growler-1"
+        technique: "false_target_generation"
+        num_false_targets: 4  # Realistic DRFM capability
+        false_target_profiles:
+          # PHYSICS CONSTRAINT: All false targets must appear within jamming beam
+          # Growler at ~85km, azimuth 10°, so bearing is ~10° ±15° cone
+          # False targets appear along this corridor at various ranges
+          # REALISTIC LIMIT: 4 coherent false targets (not 8)
+          
+          - name: "Phantom-ASM-1"
+            type: "false_cruise_missile"
+            position: [75.0, 13.2]  # 75km at 10° bearing
+            velocity: [-350, -61]  # Inbound toward radar
+            rcs: 0.15  # Small RCS like real missile
+            altitude: 50  # Sea-skimming
+            threat_characteristics:
+              - "direct_approach"
+              - "high_speed"
+              - "low_altitude"
+          
+          - name: "Phantom-ASM-2"
+            type: "false_cruise_missile"
+            position: [65.0, 11.4]  # 65km at 10° bearing
+            velocity: [-380, -66]  # Fast inbound
+            rcs: 0.1
+            altitude: 30
+            
+          - name: "Phantom-ASM-3"
+            type: "false_ballistic_missile"
+            position: [70.0, 14.2]  # 70km at 11.5° bearing
+            velocity: [-400, -80]  # Very high speed
+            rcs: 0.2
+            altitude: 100
+            threat_characteristics:
+              - "ballistic_profile"
+              - "extreme_speed"
+              
+          - name: "Phantom-ASM-4"
+            type: "false_cruise_missile"
+            position: [55.0, 9.6]  # 55km at 10° bearing
+            velocity: [-320, -56]
+            rcs: 0.12
+            altitude: 40
+    
+    # Phase 2: Real missile launch (hidden among false targets)
+    - time: 30.0
+      type: "missile_launch"
+      description: "REAL MISSILE - Hidden among false targets in jamming corridor"
+      parameters:
+        missile:
+          name: "Vampire-Real"
+          launch_position: [62.0, 10.8]  # Within jamming corridor at 10° bearing
+          target_position: [0.0, 0.0]
+          velocity: 350  # m/s - matches false target speeds
+          rcs: 0.12  # Similar to false targets
+          altitude: 40
+          stealth_mode: true  # Reduced emissions
+
+radar:
+  type: "naval_3d_phased_array"
+  position: [0.0, 0.0, 0.0]  # Ship at origin
+  
+  parameters:
+    frequency: 3.0e9  # S-band
+    power: 8000  # Watts
+    antenna_gain: 38  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1500  # Hz
+    bandwidth: 15.0e6  # Hz
+    noise_figure: 3.5  # dB
+    losses: 2.5  # dB
+    
+  processing:
+    range_resolution: 30  # meters
+    max_range: 120000  # 120 km
+    velocity_resolution: 0.8  # m/s
+    n_doppler_bins: 512
+    detection_threshold: 11  # dB above noise
+    cfar_guard_cells: 4
+    cfar_training_cells: 16
+    
+  tracking:
+    filter_type: "jpda"  # Joint Probabilistic Data Association
+    max_tracks: 30
+    track_initiation_threshold: 2  # detections
+    track_termination_threshold: 5  # missed detections
+    
+    # Critical for track dropping (same as salvo scenario)
+    track_quality_thresholds:
+      excellent: 1.0
+      good: 0.8
+      fair: 0.6
+      poor: 0.4
+      drop: 0.2  # Tracks dropped below this threshold
+      
+    # Quality degradation when resource-starved
+    quality_degradation_rates:
+      missile: 0.0  # No degradation for high-priority
+      false_missile: 0.0  # False targets treated as real
+      fighter: 0.02  # Slow degradation
+      military: 0.05  # Moderate degradation  
+      commercial: 0.08  # Fast degradation
+      
+  resource_management:
+    enabled: true
+    total_beam_budget: 1.0  # seconds per scan
+    
+    # Pre-attack allocation (balanced)
+    normal_allocation:
+      commercial: 0.3
+      fighter: 0.3
+      military: 0.2
+      search: 0.2
+      
+    # Post-EW attack allocation (false targets consume resources)
+    ew_attack_allocation:
+      high_threat_targets: 0.75  # 75% total to perceived missiles (65% false + 10% real)
+      real_missile: 0.10  # Only 10% finds real threat (subset of high_threat_targets)
+      fighter: 0.08  # 8% to fighters
+      military: 0.05  # 5% to other military
+      commercial: 0.02  # 2% to commercial (severely starved)
+      
+    # Electronic warfare impacts
+    false_target_penalties:
+      discrimination_overhead: 2.0  # Double processing per false target
+      verification_time: 0.5  # Extra time trying to verify targets
+      resource_fragmentation: 0.7  # 30% efficiency loss from switching
+
+# Growler platform
+electronic_warfare:
+  - name: "Growler-1"
+    type: "EA-18G"
+    initial_position:
+      range: 85000  # 85 km standoff
+      azimuth: 10
+      elevation: 8  # Higher altitude for better jamming coverage
+    velocity: [-100.0, 20.0, 0.0]  # Orbiting pattern
+    rcs: 15  # Larger than fighter
+    threat_level: 50  # Medium threat (not a striker)
+    
+    ew_capabilities:
+      false_target_generation:
+        max_targets: 10
+        frequency_agile: true
+        drfm_equipped: true  # Digital RF Memory for coherent false targets
+        velocity_gate_pull: true  # Can manipulate Doppler
+        range_gate_pull: true  # Can manipulate range
+        
+      threat_library_knowledge:
+        # Growler knows what the radar considers high-priority
+        known_threat_signatures:
+          - "cruise_missile"
+          - "ballistic_missile"
+          - "hypersonic"
+          - "sea_skimmer"
+        
+        exploitation_strategy: "mimic_highest_threats"
+        coordination: "time_synchronized"  # All false targets appear coordinated
+
+# Initial targets (same as salvo scenario)
+targets:
+  # Commercial Aircraft (3) - Will be dropped due to false target priority
+  - name: "Commercial-747"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 80000
+      azimuth: 20
+      elevation: 5
+    velocity: [-150.0, 0.0, 0.0]
+    rcs: 50
+    priority: 20
+    track_id: "T001"
+    expected_outcome: "LOST"  # Lost to false target prioritization
+    
+  - name: "Commercial-A320"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 90000
+      azimuth: -15
+      elevation: 6
+    velocity: [-120.0, 10.0, 0.0]
+    rcs: 40
+    priority: 20
+    track_id: "T002"
+    expected_outcome: "LOST"
+    
+  - name: "Commercial-B737"
+    type: "commercial_aircraft"
+    initial_position:
+      range: 100000
+      azimuth: 5
+      elevation: 7
+    velocity: [-140.0, 0.0, 0.0]
+    rcs: 45
+    priority: 20
+    track_id: "T003"
+    expected_outcome: "LOST"
+    
+  # Fighter Screen (4) - Will be degraded
+  - name: "Fighter-F16"
+    type: "fighter"
+    initial_position:
+      range: 45000
+      azimuth: 8
+      elevation: 3
+    velocity: [-200.0, -5.0, 0.0]
+    rcs: 5
+    priority: 40
+    track_id: "T004"
+    expected_outcome: "DEGRADED"
+    
+  - name: "Fighter-F35"
+    type: "fighter"
+    initial_position:
+      range: 48000
+      azimuth: -6
+      elevation: 3
+    velocity: [-220.0, 3.0, 0.0]
+    rcs: 3
+    priority: 40
+    track_id: "T005"
+    expected_outcome: "DEGRADED"
+    
+  - name: "Fighter-F18"
+    type: "fighter"
+    initial_position:
+      range: 50000
+      azimuth: 12
+      elevation: 4
+    velocity: [-210.0, -8.0, 0.0]
+    rcs: 4
+    priority: 40
+    track_id: "T006"
+    expected_outcome: "DEGRADED"
+    
+  - name: "Fighter-F22"
+    type: "fighter"
+    initial_position:
+      range: 43000
+      azimuth: -10
+      elevation: 3
+    velocity: [-230.0, 5.0, 0.0]
+    rcs: 2
+    priority: 45
+    track_id: "T007"
+    expected_outcome: "MAINTAINED"
+    
+  # Other Military (3) - Mixed outcomes
+  - name: "Helicopter-MH60"
+    type: "helicopter"
+    initial_position:
+      range: 40000
+      azimuth: -25
+      elevation: 1
+    velocity: [-50.0, 5.0, 0.0]
+    rcs: 10
+    priority: 30
+    track_id: "T008"
+    expected_outcome: "LOST"
+    
+  - name: "Drone-MQ9"
+    type: "drone"
+    initial_position:
+      range: 70000
+      azimuth: 35
+      elevation: 8
+    velocity: [-80.0, 0.0, 0.0]
+    rcs: 2
+    priority: 35
+    track_id: "T009"
+    expected_outcome: "LOST"
+    
+  - name: "Transport-C130"
+    type: "transport"
+    initial_position:
+      range: 95000
+      azimuth: -30
+      elevation: 5
+    velocity: [-100.0, -10.0, 0.0]
+    rcs: 100
+    priority: 25
+    track_id: "T010"
+    expected_outcome: "LOST"
+
+# Visualization configuration
+visualization:
+  enabled: true
+  
+  panels:
+    - type: "radar_picture"
+      position: "left"
+      show_elements:
+        - real_targets
+        - false_targets  # Show phantom targets
+        - growler_platform
+        - real_missile_hidden  # Highlight real threat
+        - track_status_colors
+        - false_target_markers  # Special markers for phantoms
+        
+    - type: "track_quality_evolution"
+      position: "top_right"
+      show_elements:
+        - all_track_qualities_vs_time
+        - ew_attack_marker  # t=28s
+        - missile_launch_marker  # t=30s
+        - quality_thresholds
+        
+    - type: "resource_allocation"
+      position: "bottom_right"
+      show_elements:
+        - false_vs_real_allocation  # Show resource waste
+        - track_statistics_over_time
+        - deception_effectiveness  # % resources on false targets
+
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/growler_false_target_deception"
+  
+  metrics:
+    - "track_quality_evolution"
+    - "false_target_resource_consumption"  # How much beam time wasted
+    - "real_threat_tracking_quality"  # How well real missile tracked
+    - "deception_success_rate"  # False targets maintained vs dropped
+    - "collateral_track_loss"  # Same as salvo scenario
+    - "time_to_discrimination"  # When radar realizes deception
+    
+  expected_outcomes:
+    initial_tracks: 11  # 10 real + 1 Growler
+    false_targets_generated: 4  # Realistic DRFM limit
+    real_missile_tracks: 1
+    final_active_tracks: 7  # Growler + F22 + 4 false + 1 real missile
+    tracks_lost: 6  # Same commercial/military losses
+    resource_to_false_targets: 0.65  # 65% wasted on phantoms
+    real_missile_resource: 0.10  # Only 10% on actual threat
+    
+  deception_analysis:
+    false_target_lifetime: 35  # Seconds before discrimination
+    real_missile_detection_delay: 5  # Seconds lost in confusion
+    resource_efficiency: 0.25  # 75% resources wasted
+    mission_impact: "SEVERE"  # Radar deceived, tracks lost
+    
+environment:
+  temperature: 18  # Celsius
+  pressure: 1015  # hPa
+  humidity: 75  # percent
+  weather: "partly_cloudy"
+  sea_state: 3  # Moderate waves
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 3
+    
+  # False targets appear in clutter
+  false_target_masking:
+    enabled: true
+    clutter_correlation: 0.7  # False targets mimic clutter statistics

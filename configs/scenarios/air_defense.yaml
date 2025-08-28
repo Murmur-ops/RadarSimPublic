@@ -1,0 +1,108 @@
+# Air Defense Scenario
+# Multiple aircraft with standoff jammer support
+
+scenario:
+  name: "Air Defense with Jamming"
+  description: "Fighter aircraft with standoff jammer support"
+  duration: 30.0  # seconds
+  time_step: 0.1  # seconds
+
+radar:
+  type: "ground_based"
+  parameters:
+    frequency: 10.0e9  # Hz (X-band)
+    power: 5000  # Watts
+    antenna_gain: 35  # dB
+    pulse_width: 1.0e-6  # seconds
+    prf: 1000  # Hz
+    bandwidth: 10.0e6  # Hz
+    noise_figure: 3  # dB
+    losses: 2  # dB
+    
+  processing:
+    range_resolution: 50  # meters
+    max_range: 50000  # meters
+    velocity_resolution: 1.0  # m/s
+    n_doppler_bins: 256
+    detection_threshold: 12  # dB above noise
+    cfar_guard_cells: 3
+    cfar_training_cells: 10
+
+targets:
+  - name: "Fighter-1"
+    type: "fighter"
+    initial_position:
+      range: 35000  # meters
+      azimuth: 45  # degrees
+      elevation: 10  # degrees
+    velocity: -250  # m/s (inbound)
+    rcs: 5  # m^2
+    maneuver:
+      type: "weaving"
+      period: 10  # seconds
+      amplitude: 500  # meters
+      
+  - name: "Fighter-2"  
+    type: "fighter"
+    initial_position:
+      range: 40000
+      azimuth: 50
+      elevation: 12
+    velocity: -200
+    rcs: 5
+    maneuver:
+      type: "straight"
+      
+  - name: "Bomber"
+    type: "bomber"
+    initial_position:
+      range: 45000
+      azimuth: 47
+      elevation: 15
+    velocity: -150
+    rcs: 100
+    maneuver:
+      type: "straight"
+
+jammers:
+  - name: "Standoff-Jammer-1"
+    type: "barrage"
+    platform: "aircraft"
+    initial_position:
+      range: 48000
+      azimuth: 48
+      elevation: 18
+    velocity: -50  # Loitering
+    parameters:
+      power: 200  # Watts
+      antenna_gain: 15  # dB
+      bandwidth: 50.0e6  # Hz
+      technique: "noise"
+      duty_cycle: 1.0
+      
+  - name: "Self-Protection"
+    type: "spot"
+    platform: "fighter-1"  # Attached to Fighter-1
+    parameters:
+      power: 50
+      antenna_gain: 10
+      bandwidth: 5.0e6
+      technique: "repeater"
+      activation_range: 25000  # Activate when within this range
+
+environment:
+  temperature: 15  # Celsius
+  pressure: 1013.25  # hPa
+  humidity: 50  # percent
+  weather: "clear"
+  terrain: "flat"
+  
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/air_defense"
+  metrics:
+    - "detection_probability"
+    - "track_accuracy"
+    - "jamming_effectiveness"
+    - "burn_through_range"

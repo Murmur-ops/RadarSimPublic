@@ -1,0 +1,155 @@
+# Naval Engagement Scenario
+# Ship-based radar vs sea-skimming missiles with ECM
+
+scenario:
+  name: "Naval Anti-Ship Missile Defense"
+  description: "Defending against sea-skimming missiles with jamming"
+  duration: 60.0
+  time_step: 0.05  # Higher update rate for fast missiles
+
+radar:
+  type: "naval_3d"
+  parameters:
+    frequency: 9.0e9  # X-band
+    power: 10000  # High power for maritime environment
+    antenna_gain: 40
+    pulse_width: 0.5e-6
+    prf: 2000  # Higher PRF for fast targets
+    bandwidth: 20.0e6
+    noise_figure: 4
+    losses: 3
+    
+  processing:
+    range_resolution: 25
+    max_range: 100000
+    velocity_resolution: 0.5
+    n_doppler_bins: 512
+    detection_threshold: 10
+    cfar_guard_cells: 5
+    cfar_training_cells: 20
+    
+  tracking:
+    filter_type: "imm"  # Interactive Multiple Model
+    models: ["cv", "ca", "ct"]  # Constant velocity, acceleration, turn
+    max_tracks: 50
+
+targets:
+  - name: "ASM-1"
+    type: "anti_ship_cruise_missile"
+    initial_position:
+      range: 80000
+      azimuth: 30
+      elevation: 2  # Sea-skimming
+    velocity: -300  # Mach 0.9
+    rcs: 0.1
+    maneuver:
+      type: "terminal_weave"
+      activation_range: 10000
+      
+  - name: "ASM-2"
+    type: "anti_ship_cruise_missile"
+    initial_position:
+      range: 75000
+      azimuth: 35
+      elevation: 2
+    velocity: -300
+    rcs: 0.1
+    maneuver:
+      type: "pop_up"
+      activation_range: 5000
+      max_altitude: 500
+      
+  - name: "ASBM-1"
+    type: "anti_ship_ballistic_missile"
+    initial_position:
+      range: 100000
+      azimuth: 25
+      elevation: 60  # High angle attack
+    velocity: -1500  # Mach 4.5 terminal
+    rcs: 0.5
+    maneuver:
+      type: "terminal_guidance"
+      activation_range: 20000
+      
+  - name: "ASBM-2"
+    type: "anti_ship_ballistic_missile"
+    initial_position:
+      range: 120000
+      azimuth: 28
+      elevation: 70
+    velocity: -2000  # Mach 6 terminal
+    rcs: 0.3
+    maneuver:
+      type: "maneuvering_reentry"
+      activation_range: 30000
+      
+  - name: "Supersonic-ASM"
+    type: "supersonic_anti_ship_missile"
+    initial_position:
+      range: 90000
+      azimuth: 40
+      elevation: 5
+    velocity: -800  # Mach 2.5
+    rcs: 0.2
+    maneuver:
+      type: "high_low_profile"
+      cruise_altitude: 1000
+      terminal_altitude: 10
+      
+  - name: "Decoy-1"
+    type: "decoy"
+    initial_position:
+      range: 70000
+      azimuth: 32
+      elevation: 10
+    velocity: -100
+    rcs: 50  # Enhanced RCS
+    
+jammers:
+  - name: "Missile-ECM-1"
+    type: "deception"
+    platform: "ASM-1"
+    parameters:
+      power: 20
+      antenna_gain: 6
+      technique: "range_gate_pull_off"
+      pull_rate: 100  # m/s^2
+      activation_range: 30000
+      
+  - name: "Missile-ECM-2"
+    type: "deception"
+    platform: "ASM-2"
+    parameters:
+      power: 20
+      antenna_gain: 6
+      technique: "velocity_gate_pull_off"
+      pull_rate: 10  # m/s^2
+      activation_range: 30000
+
+environment:
+  temperature: 20
+  pressure: 1015
+  humidity: 80  # Maritime
+  weather: "light_rain"
+  rain_rate: 2.0  # mm/hr
+  sea_state: 3  # Moderate waves
+  
+clutter:
+  sea_clutter:
+    enabled: true
+    model: "k_distribution"
+    sea_state: 3
+    wind_speed: 15  # m/s
+    
+  land_clutter:
+    enabled: false
+    
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/naval_engagement"
+  metrics:
+    - "first_detection_range"
+    - "track_continuity"
+    - "false_alarm_rate"
+    - "missile_leakage_probability"

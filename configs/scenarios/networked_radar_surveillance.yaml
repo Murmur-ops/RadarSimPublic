@@ -1,0 +1,252 @@
+# Networked Radar Surveillance System
+# Demonstrates distributed radar network with multiple architectures
+#
+# SCENARIO CONTEXT:
+# Three radar sites providing overlapping coverage of a surveillance area
+# Compares centralized vs decentralized fusion performance
+# Shows improved tracking accuracy and robustness
+
+scenario:
+  name: "Networked Radar Surveillance"
+  description: "Multi-site radar network with distributed tracking"
+  duration: 120.0
+  time_step: 0.5
+
+# Network configuration
+network:
+  architecture: "centralized"  # centralized, decentralized, hierarchical, hybrid
+  
+  nodes:
+    - id: "site_alpha"
+      position: [-30000, 0, 100]  # 30 km west, 100m elevation
+      type: "monostatic"
+      coverage_range: 150000  # 150 km
+      
+    - id: "site_bravo"
+      position: [30000, 0, 100]  # 30 km east
+      type: "monostatic"
+      coverage_range: 150000
+      
+    - id: "site_charlie"
+      position: [0, 30000, 150]  # 30 km north, 150m elevation
+      type: "monostatic"
+      coverage_range: 150000
+  
+  communication:
+    topology: "full_mesh"  # All nodes connected
+    links:
+      - source: "site_alpha"
+        target: "site_bravo"
+        bandwidth: 10e6  # 10 Mbps
+        latency: 0.005  # 5 ms
+        packet_loss: 0.001  # 0.1%
+        
+      - source: "site_alpha"
+        target: "site_charlie"
+        bandwidth: 10e6
+        latency: 0.007  # 7 ms
+        packet_loss: 0.001
+        
+      - source: "site_bravo"
+        target: "site_charlie"
+        bandwidth: 10e6
+        latency: 0.006  # 6 ms
+        packet_loss: 0.001
+  
+  time_synchronization:
+    method: "gps"
+    accuracy: 100e-9  # 100 ns
+    drift_rate: 1e-9  # 1 ppb
+
+# Radar parameters (same for all sites)
+radar:
+  type: "surveillance_radar"
+  
+  parameters:
+    frequency: 2.9e9  # S-band
+    power: 5000  # 5 kW
+    antenna_gain: 35  # dB
+    pulse_width: 2.0e-6
+    prf: 600  # Hz
+    bandwidth: 5.0e6
+    noise_figure: 3.5
+    losses: 3.0
+    
+  processing:
+    detection_threshold: 12  # dB
+    max_range: 150000  # 150 km
+    range_resolution: 30  # meters
+    
+  tracking:
+    filter_type: "imm"
+    max_tracks: 100
+    
+# Fusion configuration
+fusion:
+  algorithm: "covariance_intersection"
+  
+  centralized:
+    fusion_center: "site_bravo"  # Central node
+    update_rate: 2.0  # Hz
+    latency_budget: 0.050  # 50 ms max
+    
+  decentralized:
+    consensus_iterations: 5
+    consensus_weight: 0.3
+    neighbor_exchange_rate: 5.0  # Hz
+    
+  track_association:
+    method: "mahalanobis"
+    gate_threshold: 9.21  # Chi-square 99% for 2D
+    max_time_difference: 0.5  # seconds
+    
+  performance_metrics:
+    - "track_accuracy"
+    - "track_consistency"
+    - "communication_load"
+    - "fusion_latency"
+    - "coverage_efficiency"
+
+# Target scenarios
+targets:
+  # High-speed aircraft crossing the network
+  - name: "Aircraft-1"
+    type: "fighter"
+    initial_position:
+      x: -80000
+      y: 20000
+      z: 8000
+    velocity: [250, -10, 0]  # m/s
+    rcs: 5.0  # m^2
+    maneuver_profile:
+      - time: 30.0
+        type: "turn"
+        parameters:
+          turn_rate: 3.0  # deg/s
+          duration: 20.0
+    
+  # Commercial aircraft with steady flight
+  - name: "Aircraft-2"
+    type: "airliner"
+    initial_position:
+      x: 60000
+      y: -40000
+      z: 10000
+    velocity: [-180, 50, 0]
+    rcs: 100.0  # Large RCS
+    
+  # Low-flying helicopter
+  - name: "Helicopter-1"
+    type: "helicopter"
+    initial_position:
+      x: 0
+      y: -60000
+      z: 500  # Low altitude
+    velocity: [0, 40, 0]
+    rcs: 10.0
+    maneuver_profile:
+      - time: 60.0
+        type: "hover"
+        duration: 10.0
+      - time: 70.0
+        type: "acceleration"
+        parameters:
+          acceleration: [10, 0, 0]
+          duration: 5.0
+  
+  # Crossing target to test association
+  - name: "Aircraft-3"
+    type: "fighter"
+    initial_position:
+      x: -60000
+      y: -60000
+      z: 7000
+    velocity: [200, 200, 0]  # Diagonal path
+    rcs: 5.0
+
+# Jamming/interference (optional)
+interference:
+  enabled: false  # Can enable to test robustness
+  sources:
+    - type: "noise_jammer"
+      position: [40000, 40000, 5000]
+      power: 100  # Watts
+      bandwidth: 20e6
+      
+# Analysis configuration
+analysis:
+  comparison_modes:
+    - name: "centralized_vs_decentralized"
+      metrics:
+        - "average_rmse"
+        - "track_consistency"
+        - "communication_bandwidth"
+        - "single_point_failure_risk"
+        
+    - name: "coverage_analysis"
+      metrics:
+        - "single_coverage_area"
+        - "double_coverage_area"
+        - "triple_coverage_area"
+        - "blind_zones"
+        
+  expected_results:
+    centralized:
+      average_rmse: 50  # meters
+      track_continuity: 0.95
+      bandwidth_usage: 5e6  # bps
+      
+    decentralized:
+      average_rmse: 70  # meters (slightly worse)
+      track_continuity: 0.98  # Better robustness
+      bandwidth_usage: 8e6  # Higher due to peer exchanges
+      
+  benefits:
+    - "Improved accuracy through data fusion"
+    - "Graceful degradation with node failures"
+    - "Extended coverage through coordination"
+    - "Reduced false tracks via cross-validation"
+    
+# Visualization
+visualization:
+  enabled: true
+  
+  plots:
+    - type: "network_topology"
+      show:
+        - radar_sites
+        - communication_links
+        - coverage_circles
+        - coverage_overlap
+        
+    - type: "track_comparison"
+      show:
+        - true_trajectories
+        - individual_radar_tracks
+        - fused_tracks
+        - uncertainty_ellipses
+        
+    - type: "performance_metrics"
+      show:
+        - rmse_over_time
+        - track_consistency
+        - communication_load
+        - fusion_latency
+        
+    - type: "coverage_map"
+      show:
+        - detection_probability_heatmap
+        - blind_zones
+        - overlap_regions
+
+output:
+  save_figures: true
+  save_data: true
+  output_dir: "results/networked_radar"
+  
+  files:
+    - "network_topology.png"
+    - "tracking_performance.png"
+    - "fusion_comparison.png"
+    - "coverage_analysis.png"
+    - "metrics_summary.json"
