@@ -447,14 +447,18 @@ def main():
             pd = results['metrics'].get(f'{target.name}_pd', 0)
             print(f"  {target.name}: {pd*100:.1f}%")
         
-        # Create visualization
+        # Create visualization (always generate unless explicitly disabled)
         if not args.no_viz:
-            output_path = None
-            if args.output:
-                os.makedirs(args.output, exist_ok=True)
-                output_path = os.path.join(args.output, f"{args.scenario}_results.png")
+            # Default output directory if not specified
+            if not args.output:
+                args.output = "results"
             
+            os.makedirs(args.output, exist_ok=True)
+            output_path = os.path.join(args.output, f"{args.scenario}_results.png")
+            
+            print(f"\nGenerating visualization...")
             runner.visualize_results(save_path=output_path)
+            print(f"✅ Plot saved to: {output_path}")
         
         print("\n✅ Scenario complete!")
         

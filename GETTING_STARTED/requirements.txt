@@ -1,0 +1,18 @@
+# RadarSim Getting Started Requirements
+# Core dependencies for running basic radar simulations
+
+# Numerical computing
+numpy>=1.20.0
+scipy>=1.7.0
+
+# Visualization
+matplotlib>=3.3.0
+
+# Configuration
+pyyaml>=5.4.0
+
+# Data structures
+dataclasses
+
+# Optional: For Rust extensions
+# maturin>=0.14.0

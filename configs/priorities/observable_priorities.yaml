@@ -1,0 +1,295 @@
+# Observable-Based Priority Configuration
+# 
+# This configuration maintains non-cheating integrity by only using
+# priorities based on OBSERVABLE behavior, not assumed identity.
+#
+# Different radar types can use different priority configurations
+# while all staying honest about what can actually be determined.
+
+priority_config:
+  name: "Observable Behavior-Based Priorities"
+  version: "1.0"
+  
+  # Priority levels based on observable behavior patterns
+  behavior_priorities:
+    
+    # EMERGENCY INDICATORS (Highest Priority)
+    emergency_squawk:
+      description: "Transponder broadcasting emergency code"
+      observable_criteria:
+        transponder_code: ['7700', '7600', '7500']
+      base_priority: 10.0
+      required_update_rate: 1.0    # seconds
+      min_track_quality: 0.8
+      can_drop: false
+      evidence_required: "transponder"
+      
+    # HIGH-SPEED THREATS
+    fast_approaching:
+      description: "High-speed object on collision/intercept course"
+      observable_criteria:
+        speed: ">200"              # m/s
+        range_rate: "<-150"        # Approaching fast
+        time_to_intercept: "<60"   # seconds
+      base_priority: 9.5
+      required_update_rate: 0.5
+      min_track_quality: 0.7
+      can_drop: false
+      evidence_required: "kinematics"
+      
+    very_fast_mover:
+      description: "Very high speed target (possible missile)"
+      observable_criteria:
+        speed: ">300"              # m/s (Mach 1+)
+        rcs: "<1.0"               # Small RCS
+      base_priority: 9.0
+      required_update_rate: 0.5
+      min_track_quality: 0.7
+      can_drop: false
+      evidence_required: "kinematics"
+    
+    # APPROACH/DEPARTURE PATTERNS
+    large_on_approach:
+      description: "Large aircraft on standard approach path"
+      observable_criteria:
+        rcs: ">50"                # Large aircraft
+        altitude_trend: "descending"
+        aligned_with_runway: true
+        distance_to_airport: "<50" # km
+      base_priority: 8.0
+      required_update_rate: 2.0
+      min_track_quality: 0.6
+      can_drop: false
+      evidence_required: "trajectory"
+      
+    large_departure:
+      description: "Large aircraft departing"
+      observable_criteria:
+        rcs: ">50"
+        altitude_trend: "climbing"
+        near_airport: true
+      base_priority: 7.5
+      required_update_rate: 2.0
+      min_track_quality: 0.6
+      can_drop: false
+      evidence_required: "trajectory"
+    
+    # SUSPICIOUS BEHAVIOR
+    no_transponder_low:
+      description: "Non-cooperative target at low altitude"
+      observable_criteria:
+        has_transponder: false
+        altitude: "<1000"          # meters
+        speed: ">20"              # Not stationary
+      base_priority: 7.0
+      required_update_rate: 1.5
+      min_track_quality: 0.6
+      can_drop: false
+      evidence_required: "lack_of_transponder"
+      
+    erratic_maneuvering:
+      description: "Unpredictable flight path"
+      observable_criteria:
+        maneuvering: true
+        heading_change_rate: ">30" # deg/s
+        altitude_variations: true
+      base_priority: 6.5
+      required_update_rate: 1.0
+      min_track_quality: 0.6
+      can_drop: false
+      evidence_required: "trajectory"
+    
+    # NORMAL OPERATIONS
+    rotorcraft_pattern:
+      description: "Helicopter with blade flash signature"
+      observable_criteria:
+        has_blade_flash: true
+        speed: "<100"             # Typical helicopter speed
+      base_priority: 5.0
+      required_update_rate: 3.0
+      min_track_quality: 0.5
+      can_drop: true              # Unless emergency
+      evidence_required: "micro_doppler"
+      
+    moderate_speed_cooperative:
+      description: "Normal air traffic with transponder"
+      observable_criteria:
+        has_transponder: true
+        speed: "50-250"
+        altitude: ">1000"
+      base_priority: 4.0
+      required_update_rate: 4.0
+      min_track_quality: 0.4
+      can_drop: true
+      evidence_required: "transponder"
+      
+    slow_mover:
+      description: "Slow-moving aircraft or vehicle"
+      observable_criteria:
+        speed: "<50"
+        has_transponder: true
+      base_priority: 3.0
+      required_update_rate: 5.0
+      min_track_quality: 0.3
+      can_drop: true
+      evidence_required: "kinematics"
+    
+    # LOW PRIORITY
+    stationary:
+      description: "Stationary or near-stationary"
+      observable_criteria:
+        speed: "<5"
+      base_priority: 2.0
+      required_update_rate: 10.0
+      min_track_quality: 0.2
+      can_drop: true
+      evidence_required: "kinematics"
+      
+    bird_like:
+      description: "Small, erratic, biological signature"
+      observable_criteria:
+        rcs: "<0.1"
+        erratic_motion: true
+        altitude: "<3000"
+      base_priority: 1.0
+      required_update_rate: 10.0
+      min_track_quality: 0.2
+      can_drop: true
+      evidence_required: "signature"
+    
+    # UNKNOWN
+    unknown:
+      description: "Cannot classify with confidence"
+      observable_criteria:
+        classification_confidence: "<0.4"
+      base_priority: 5.0          # Medium priority until identified
+      required_update_rate: 2.0   # More updates to classify
+      min_track_quality: 0.5
+      can_drop: false             # Keep trying to classify
+      evidence_required: "insufficient"
+
+  # Context modifiers (multiplicative factors)
+  context_modifiers:
+    
+    # Location-based modifiers
+    near_airport:
+      applies_to: ["large_on_approach", "large_departure"]
+      priority_multiplier: 1.3
+      update_rate_multiplier: 0.7  # Faster updates
+      
+    near_border:
+      applies_to: ["no_transponder_low", "erratic_maneuvering"]
+      priority_multiplier: 1.5
+      update_rate_multiplier: 0.8
+      
+    restricted_airspace:
+      applies_to: ["no_transponder_low", "unknown"]
+      priority_multiplier: 2.0
+      update_rate_multiplier: 0.5
+    
+    # Time-based modifiers
+    rush_hour:
+      applies_to: ["large_on_approach", "large_departure"]
+      priority_multiplier: 1.2
+      update_rate_multiplier: 0.9
+      
+    night_time:
+      applies_to: ["no_transponder_low"]
+      priority_multiplier: 1.3
+      update_rate_multiplier: 0.9
+    
+    # Weather modifiers
+    bad_weather:
+      applies_to: ["rotorcraft_pattern", "slow_mover"]
+      priority_multiplier: 1.4
+      update_rate_multiplier: 0.8
+      
+    low_visibility:
+      applies_to: ["all"]
+      priority_multiplier: 1.1
+      update_rate_multiplier: 0.9
+
+  # Track quality degradation rates (per second)
+  quality_degradation:
+    high_dynamics:
+      description: "Fast or maneuvering targets"
+      criteria:
+        speed: ">150"
+        or_maneuvering: true
+      degradation_rate: 0.15
+      
+    medium_dynamics:
+      description: "Moderate speed, straight flight"
+      criteria:
+        speed: "50-150"
+        maneuvering: false
+      degradation_rate: 0.08
+      
+    low_dynamics:
+      description: "Slow, predictable motion"
+      criteria:
+        speed: "<50"
+        maneuvering: false
+      degradation_rate: 0.04
+      
+    stationary:
+      description: "Not moving or very slow"
+      criteria:
+        speed: "<5"
+      degradation_rate: 0.02
+
+  # Resource exhaustion rules
+  resource_management:
+    mode: "meet_requirements"  # vs "best_effort"
+    
+    # Order to degrade/drop when resources exhausted
+    degradation_order:
+      1: "bird_like"
+      2: "stationary"
+      3: "slow_mover"
+      4: "moderate_speed_cooperative"
+      5: "rotorcraft_pattern"
+      # Never degrade: emergency, fast_approaching, unknown
+    
+    # Minimum resource allocation
+    guaranteed_resources:
+      emergency_squawk: 0.15      # 15% minimum
+      fast_approaching: 0.10       # 10% minimum
+      unknown: 0.05               # 5% to classify
+    
+    # Maximum resource allocation
+    resource_caps:
+      bird_like: 0.02             # Max 2%
+      stationary: 0.05            # Max 5%
+
+# Radar type-specific overrides
+radar_type_configs:
+  
+  civilian_atc:
+    description: "Air Traffic Control radar priorities"
+    priority_adjustments:
+      large_on_approach: 1.5      # Boost passenger aircraft
+      large_departure: 1.4
+      no_transponder_low: 0.8     # Less concern than military
+      
+  military_defense:
+    description: "Military air defense priorities"
+    priority_adjustments:
+      fast_approaching: 1.5       # Boost potential threats
+      no_transponder_low: 1.3
+      unknown: 1.2
+      moderate_speed_cooperative: 0.7  # Reduce civilian traffic
+      
+  border_surveillance:
+    description: "Border security priorities"
+    priority_adjustments:
+      no_transponder_low: 1.8     # Primary concern
+      slow_mover: 1.2            # Could be smuggling
+      erratic_maneuvering: 1.4
+      
+  naval_radar:
+    description: "Ship-based radar priorities"
+    priority_adjustments:
+      fast_approaching: 1.6       # Anti-ship missile concern
+      very_fast_mover: 1.5
+      rotorcraft_pattern: 1.1     # Could be ASW helicopter

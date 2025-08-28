@@ -133,10 +133,9 @@ class PriorityCalculator:
         if target.range_rate < -50.0:  # Approaching at >50 m/s
             base_score *= (1.0 + min(abs(target.range_rate) / 200.0, 1.0))
             
-        # Large RCS penalty for civilian/transport
-        if target.threat_level in [ThreatLevel.CIVILIAN, ThreatLevel.TRANSPORT]:
-            if target.rcs_estimate > 100.0:  # Large RCS suggests large aircraft
-                base_score *= 0.5
+        # Note: RCS is just observable data, not a reason to penalize
+        # Large aircraft may have operational importance (passengers, cargo)
+        # Priority should be based on behavior and context, not size
                 
         return base_score
     

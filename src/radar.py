@@ -52,6 +52,16 @@ class Radar:
         self.k_boltzmann = BOLTZMANN_CONSTANT
         self.temperature = STANDARD_TEMPERATURE
         
+        # Expose common attributes directly for compatibility
+        self.frequency = params.frequency
+        self.power = params.power
+        self.antenna_gain = params.antenna_gain
+        self.bandwidth = params.bandwidth
+        self.prf = params.prf
+        self.pulse_width = params.pulse_width
+        self.noise_figure = params.noise_figure
+        self.losses = params.losses
+        
     def radar_equation(self, range_m: float, rcs: float) -> float:
         """
         Calculate received power using radar equation
@@ -94,6 +104,31 @@ class Radar:
         
         snr_linear = pr / noise_power
         return 10 * np.log10(snr_linear)
+    
+    def calculate_snr(self, target, environment=None) -> float:
+        """
+        Calculate SNR for a target (compatibility method)
+        
+        Args:
+            target: Target object with position and rcs attributes
+            environment: Environment object (optional)
+            
+        Returns:
+            SNR in dB
+        """
+        # Calculate range to target
+        if hasattr(self, 'position'):
+            range_vector = target.position - self.position
+        else:
+            range_vector = target.position
+        
+        range_m = np.linalg.norm(range_vector)
+        
+        # Get RCS
+        rcs = target.rcs if hasattr(target, 'rcs') else 10.0
+        
+        # Calculate and return SNR
+        return self.snr(range_m, rcs)
     
     def detection_probability(self, snr_db: float, pfa: float = 1e-6, 
                             swerling_model: int = 1, n_pulses: int = 1) -> float:

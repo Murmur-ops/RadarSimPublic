@@ -48,14 +48,26 @@ def create_simple_radar():
 
 def create_target_scenario():
     """Create a simple target scenario with an aircraft"""
+    from src.target import Target, TargetType, TargetMotion
+    
     # Commercial aircraft flying at 10km altitude
-    target = Target(
-        target_id="Flight-001",
+    motion = TargetMotion(
         position=np.array([30000.0, 15000.0, 10000.0]),  # 30km range
         velocity=np.array([-200.0, -50.0, 0.0]),         # 206 m/s ground speed
-        rcs=100.0,              # 100 m² RCS (large aircraft)
-        target_type="aircraft"
     )
+    
+    target = Target(
+        target_type=TargetType.AIRCRAFT,
+        rcs=100.0,              # 100 m² RCS (large aircraft)
+        motion=motion
+    )
+    
+    # Add attributes needed by the simulation
+    target.target_id = "Flight-001"
+    target.position = motion.position
+    target.velocity = motion.velocity
+    target.rcs = target.rcs_mean  # Use the mean RCS value
+    
     return target
 
 def run_basic_simulation():
@@ -80,8 +92,13 @@ def run_basic_simulation():
     
     # Step 2: Create environment
     print("\n3. Setting up environment...")
-    environment = Environment()
-    environment.set_conditions(temperature=15, pressure=1013.25, humidity=60)
+    from src.environment import Environment, AtmosphericConditions
+    conditions = AtmosphericConditions(
+        temperature=15,
+        pressure=1013.25,
+        humidity=60
+    )
+    environment = Environment(conditions=conditions)
     
     # Step 3: Initialize tracking
     print("\n4. Initializing Kalman filter for tracking...")
