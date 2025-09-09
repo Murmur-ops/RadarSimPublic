@@ -1,0 +1,414 @@
+# Networked Integrated Air Defense System (IADS)
+# Complex military scenario with multiple radars, diverse threats, jamming, and coordination
+
+scenario:
+  name: "Networked IADS Engagement"
+  description: "Multi-radar network defending against coordinated air attack with EW"
+  duration: 300.0  # 5 minutes
+  time_step: 0.05  # 50ms updates (20 Hz)
+
+# NETWORKED RADAR CONFIGURATION
+# Multiple radars with different roles and capabilities
+radars:
+  # Long-Range Early Warning Radar
+  - name: "EWR-1"
+    type: "phased_array"
+    position: [0.0, 0.0, 100.0]  # Elevated position
+    role: "early_warning"
+    
+    parameters:
+      frequency: 1.3e9       # L-band for long range
+      power: 1.0e6          # 1 MW peak power
+      antenna_gain: 40      # 40 dB (large array)
+      pulse_width: 10.0e-6  # 10 μs (long pulse for energy)
+      prf: 300              # Low PRF for long range
+      bandwidth: 5.0e6      # 5 MHz
+      noise_figure: 2.5
+      losses: 3.0
+      
+    coverage:
+      max_range: 400000     # 400 km
+      min_elevation: -2.0   # degrees
+      max_elevation: 30.0
+      azimuth_sector: [-180.0, 180.0]  # 360° coverage
+      
+  # Fire Control Radar (X-band)
+  - name: "FCR-1"
+    type: "phased_array"
+    position: [10000.0, 0.0, 50.0]
+    role: "fire_control"
+    
+    parameters:
+      frequency: 10.0e9     # X-band for precision
+      power: 100000        # 100 kW
+      antenna_gain: 42     # 42 dB
+      pulse_width: 1.0e-6  # 1 μs
+      prf: 5000            # High PRF for velocity
+      bandwidth: 100.0e6   # 100 MHz (high resolution)
+      noise_figure: 3.0
+      losses: 3.5
+      
+    coverage:
+      max_range: 150000    # 150 km
+      min_elevation: -5.0
+      max_elevation: 85.0
+      azimuth_sector: [-60.0, 60.0]  # 120° sector
+      
+  # Gap Filler Radar
+  - name: "GFR-1"
+    type: "mechanical"
+    position: [-5000.0, 8000.0, 20.0]
+    role: "gap_filler"
+    
+    parameters:
+      frequency: 3.0e9     # S-band
+      power: 50000        # 50 kW
+      antenna_gain: 35    # 35 dB
+      pulse_width: 2.0e-6
+      prf: 1500
+      bandwidth: 20.0e6
+      noise_figure: 3.5
+      losses: 3.0
+      
+    coverage:
+      max_range: 80000     # 80 km
+      min_elevation: 0.0
+      max_elevation: 45.0
+      azimuth_sector: [-180.0, 180.0]
+
+# NETWORK CONFIGURATION
+network:
+  enabled: true
+  fusion_center: [0.0, 0.0, 0.0]  # C2 location
+  
+  data_links:
+    latency: 0.01         # 10ms network latency
+    bandwidth: 1.0e9      # 1 Gbps
+    packet_loss: 0.001    # 0.1% packet loss
+    
+  fusion:
+    algorithm: "covariance_intersection"
+    update_rate: 10.0     # 10 Hz fusion rate
+    
+  coordination:
+    track_sharing: true
+    threat_assessment: true
+    resource_optimization: true
+    
+  command_hierarchy:
+    - radar: "EWR-1"
+      role: "surveillance"
+      priority: 1
+    - radar: "FCR-1"
+      role: "engagement"
+      priority: 2
+    - radar: "GFR-1"
+      role: "gap_coverage"
+      priority: 3
+
+# THREAT TARGETS
+targets:
+  # Strike Package - Fighter Aircraft
+  - name: "Strike-1"
+    type: "fighter_aircraft"
+    formation: "lead"
+    initial_position: [200000.0, 50000.0, 8000.0]
+    velocity: [-350.0, -100.0, 0.0]  # 360 m/s inbound
+    acceleration: [0.0, 0.0, 0.0]
+    
+    rcs:
+      model: "swerling_1"
+      mean_value: 1.0      # 1 m² (reduced RCS)
+      aspect_variation: true
+      
+    kinematics:
+      maneuver_type: "tactical"
+      g_limit: 9.0         # 9G capable
+      
+    threat_level: 95      # Critical threat
+    iff: "hostile"
+    
+  - name: "Strike-2"
+    type: "fighter_aircraft"
+    formation: "wingman"
+    initial_position: [201000.0, 51000.0, 8000.0]
+    velocity: [-350.0, -100.0, 0.0]
+    
+    rcs:
+      model: "swerling_1"
+      mean_value: 1.0
+      
+    threat_level: 95
+    iff: "hostile"
+    
+  # Cruise Missiles
+  - name: "CM-1"
+    type: "cruise_missile"
+    initial_position: [150000.0, 20000.0, 100.0]  # Low altitude
+    velocity: [-280.0, -50.0, 0.0]  # Mach 0.8
+    
+    rcs:
+      model: "swerling_2"  # Fast fluctuation
+      mean_value: 0.1      # 0.1 m² (very small)
+      
+    kinematics:
+      maneuver_type: "terrain_following"
+      altitude_agl: 100.0  # 100m above ground
+      
+    threat_level: 100     # Maximum threat
+    iff: "hostile"
+    
+  # Decoy Drones
+  - name: "Decoy-1"
+    type: "uav"
+    initial_position: [180000.0, 40000.0, 5000.0]
+    velocity: [-150.0, -30.0, 0.0]
+    
+    rcs:
+      model: "swerling_0"
+      mean_value: 0.5
+      enhancement: "corner_reflector"  # RCS enhancement
+      
+    threat_level: 30
+    iff: "hostile"
+    
+  # AWACS/Support Aircraft
+  - name: "Support-1"
+    type: "awacs"
+    initial_position: [250000.0, 80000.0, 10000.0]
+    velocity: [-100.0, 50.0, 0.0]  # Orbiting
+    
+    rcs:
+      model: "swerling_0"
+      mean_value: 200.0    # Large RCS
+      
+    threat_level: 60
+    iff: "hostile"
+
+# ELECTRONIC WARFARE
+jamming:
+  enabled: true
+  
+  # Standoff Jammer (on Support-1)
+  jammers:
+    - name: "SOJ-1"
+      platform: "Support-1"  # Mounted on AWACS
+      type: "noise"
+      
+      parameters:
+        power: 1000         # 1 kW ERP
+        bandwidth: 500.0e6  # 500 MHz
+        
+      techniques:
+        - type: "barrage"
+          frequency_range: [1.0e9, 2.0e9]  # L-band
+        - type: "spot"
+          target_radar: "EWR-1"
+          
+    # Self-Protection Jammers
+    - name: "SPJ-1"
+      platform: "Strike-1"
+      type: "drfm"
+      
+      parameters:
+        power: 100
+        bandwidth: 1.0e9
+        memory_depth: 10.0e-3  # 10 ms
+        
+      techniques:
+        - type: "range_gate_pull_off"
+          pull_rate: 100.0     # m/s
+        - type: "velocity_gate_pull_off"
+          pull_rate: 50.0      # m/s
+        - type: "false_targets"
+          num_false: 3
+          
+  # Chaff Deployment
+  countermeasures:
+    - type: "chaff"
+      platform: "Strike-1"
+      deploy_time: [100.0, 110.0]  # Deploy at 100-110 seconds
+      rcs_cloud: 50.0              # 50 m² cloud
+      dispersion_rate: 10.0        # m/s
+      duration: 30.0               # 30 second persistence
+
+# ECCM CONFIGURATION
+eccm:
+  enabled: true
+  
+  techniques:
+    # Frequency Agility
+    frequency_agility:
+      enabled: true
+      hop_rate: 100        # 100 hops/second
+      frequency_set: "random"
+      bandwidth: 1.0e9     # 1 GHz agility range
+      
+    # Pulse Compression
+    pulse_compression:
+      enabled: true
+      compression_ratio: 100
+      sidelobe_level: -30  # dB
+      
+    # Advanced Processing
+    adaptive_processing:
+      enabled: true
+      algorithms:
+        - "stap"           # Space-Time Adaptive Processing
+        - "adaptive_beamforming"
+        - "nulling"        # Null steering toward jammers
+        
+    # Burn-Through
+    burn_through:
+      enabled: true
+      power_increase: 10   # 10 dB power increase
+      
+    # Home-on-Jam
+    home_on_jam:
+      enabled: true
+      handoff_to: "FCR-1"
+
+# RESOURCE MANAGEMENT
+resource_management:
+  enabled: true
+  
+  # Task Priorities (0-1 scale)
+  task_allocation:
+    search: 0.2
+    track: 0.4
+    identification: 0.2
+    engagement: 0.2
+    
+  # Threat-Based Prioritization
+  threat_priority:
+    algorithm: "multi_criteria"
+    factors:
+      threat_level: 0.3
+      range: 0.2
+      closing_velocity: 0.2
+      altitude: 0.1
+      rcs: 0.1
+      kinematics: 0.1
+      
+  # Beam Management
+  beam_management:
+    max_concurrent: 8      # 8 simultaneous beams
+    dwell_time:
+      search: 0.005        # 5 ms
+      track: 0.002         # 2 ms
+      classification: 0.010 # 10 ms
+      
+  # Overload Handling
+  overload:
+    strategy: "priority_queue"
+    max_tracks: 50
+    drop_threshold: 10     # Drop if threat < 10
+
+# ENVIRONMENTAL CONDITIONS
+environment:
+  atmosphere:
+    temperature: 20.0
+    pressure: 1013.25
+    humidity: 70.0
+    
+  weather:
+    type: "light_rain"
+    rain_rate: 2.0         # mm/hr
+    cloud_base: 2000       # meters
+    visibility: 8000       # meters
+    
+  terrain:
+    type: "mountainous"
+    max_elevation: 2000    # meters
+    
+  propagation:
+    multipath: true
+    ducting: false
+    atmospheric_loss: true
+    rain_attenuation: true
+    
+# CLUTTER
+clutter:
+  enabled: true
+  
+  ground_clutter:
+    enabled: true
+    type: "mountainous"
+    reflectivity: -15      # dBsm/m²
+    doppler_spread: 2.0    # m/s
+    
+  weather_clutter:
+    enabled: true
+    type: "rain"
+    reflectivity: -25      # dBZ
+    
+  chaff_clutter:
+    enabled: true
+    included_in_processing: true
+
+# WEAPONS ASSIGNMENT (Optional)
+weapons:
+  enabled: true
+  
+  sites:
+    - name: "SAM-1"
+      type: "long_range_sam"
+      position: [5000.0, 0.0, 0.0]
+      num_missiles: 8
+      max_range: 120000    # 120 km
+      min_range: 5000      # 5 km
+      max_altitude: 25000  # 25 km
+      reaction_time: 5.0   # 5 seconds
+      pk: 0.8              # Probability of kill
+      
+    - name: "SAM-2"
+      type: "medium_range_sam"
+      position: [-3000.0, 7000.0, 0.0]
+      num_missiles: 12
+      max_range: 50000
+      min_range: 2000
+      max_altitude: 15000
+      reaction_time: 3.0
+      pk: 0.85
+      
+  assignment:
+    algorithm: "weapon_target_assignment"
+    shoot_look_shoot: true
+    salvo_size: 2          # 2 missiles per target
+
+# SIMULATION OUTPUT
+output:
+  save_figures: true
+  save_data: true
+  save_tracks: true
+  output_dir: "results/networked_iads"
+  
+  plots:
+    - "network_coverage"   # Combined radar coverage
+    - "track_correlation"  # Multi-radar track association
+    - "jamming_effectiveness"
+    - "kill_probability"
+    - "resource_timeline"
+    - "threat_assessment"
+    
+  metrics:
+    - "network_pd"         # Network-level Pd
+    - "track_accuracy"
+    - "jamming_burnthrough"
+    - "engagement_success"
+    - "reaction_time"
+    
+  data_format: "hdf5"
+  
+# MONTE CARLO OPTIONS
+monte_carlo:
+  enabled: false
+  num_runs: 100
+  
+  variations:
+    - parameter: "targets.*.initial_position"
+      distribution: "gaussian"
+      std_dev: 1000        # 1 km position uncertainty
+    - parameter: "jamming.jammers.*.power"
+      distribution: "uniform"
+      range: [0.8, 1.2]    # ±20% power variation

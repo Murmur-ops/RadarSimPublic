@@ -1,0 +1,348 @@
+# Tutorial Radar Simulation Scenario
+# =====================================
+# This YAML file defines a complete radar simulation scenario including:
+# - Radar system parameters (hardware, waveforms, processing)
+# - Multiple targets with different characteristics
+# - Environmental effects (weather, clutter, propagation)
+# - Jamming and electronic warfare elements
+# - Resource management and tracking configuration
+# - Output specifications for analysis
+
+# SCENARIO METADATA
+# -----------------
+# Basic information about the simulation scenario
+scenario:
+  name: "Multi-Target Air Defense Tutorial"
+  description: "Tutorial scenario with fighter jets, commercial aircraft, and a drone"
+  duration: 60.0  # Total simulation time in seconds
+  time_step: 0.1  # Update rate in seconds (100ms = 10 Hz update rate)
+
+# RADAR SYSTEM CONFIGURATION
+# --------------------------
+# Defines the radar hardware and processing capabilities
+radar:
+  type: "phased_array"  # Options: "phased_array", "mechanical", "aesa", "mimo"
+  position: [0.0, 0.0, 0.0]  # Radar location [x, y, z] in meters from origin
+  
+  # Physical radar parameters that determine detection performance
+  parameters:
+    # Transmitter parameters
+    frequency: 10.0e9       # Carrier frequency in Hz (10 GHz = X-band)
+                           # Common bands: L(1-2GHz), S(2-4GHz), C(4-8GHz), X(8-12GHz), Ku(12-18GHz)
+    power: 5000            # Peak transmit power in Watts
+                           # Typical values: 1kW-10MW depending on radar type
+    
+    # Antenna parameters
+    antenna_gain: 35       # Antenna gain in dB (higher = more directional)
+                          # Typical: 20-45 dB for surveillance radars
+    
+    # Pulse parameters
+    pulse_width: 2.0e-6    # Pulse duration in seconds (2 microseconds)
+                          # Shorter pulses = better range resolution but less energy
+    prf: 2000              # Pulse Repetition Frequency in Hz
+                          # Higher PRF = better velocity resolution but shorter max range
+                          # Max unambiguous range = c/(2*PRF) = 75km for 2kHz
+    
+    # Receiver parameters
+    bandwidth: 50.0e6      # Receiver bandwidth in Hz (50 MHz)
+                          # Range resolution = c/(2*BW) = 3 meters
+    noise_figure: 3.0      # Receiver noise figure in dB (lower is better)
+                          # Typical: 2-5 dB for modern receivers
+    losses: 3.0            # Total system losses in dB (cables, processing, etc.)
+    
+  # Waveform configuration for pulse compression and Doppler processing
+  waveform:
+    type: "lfm"            # Waveform type: "lfm" (chirp), "barker", "frank", "pulse"
+    chirp_rate: 25.0e12    # Frequency sweep rate in Hz/s (for LFM)
+                          # Chirp bandwidth = chirp_rate * pulse_width
+    
+  # Signal processing parameters
+  processing:
+    # Range processing
+    range_resolution: 3.0   # Minimum resolvable range difference in meters
+    max_range: 100000      # Maximum instrumented range in meters (100 km)
+    min_range: 500         # Minimum detection range in meters (blind range)
+    n_range_bins: 1024     # Number of range cells for FFT processing
+    
+    # Doppler processing
+    velocity_resolution: 0.5  # Minimum resolvable velocity difference in m/s
+    max_velocity: 500      # Maximum unambiguous velocity in m/s
+                          # Max velocity = wavelength * PRF / 4
+    n_doppler_bins: 256    # Number of Doppler cells for FFT processing
+    
+  # CFAR (Constant False Alarm Rate) detection configuration
+  detection:
+    cfar_type: "ca_cfar"  # CFAR algorithm: "ca_cfar", "os_cfar", "go_cfar", "so_cfar"
+                          # CA = Cell Averaging (good for homogeneous environment)
+                          # OS = Ordered Statistics (robust to interference)
+                          # GO = Greatest Of (for clutter edges)
+                          # SO = Smallest Of (for multiple targets)
+    
+    pfa: 1.0e-6            # Probability of false alarm (typically 1e-4 to 1e-8)
+                          # Lower Pfa = fewer false alarms but may miss weak targets
+    
+    num_guard_cells: 2     # Guard cells around test cell (prevents self-masking)
+    num_training_cells: 16 # Training cells for noise estimation (8-32 typical)
+    
+    min_snr: 12.0          # Minimum SNR for detection in dB
+                          # Detection threshold based on required Pd and Pfa
+    
+  # Target tracking configuration
+  tracking:
+    filter_type: "imm"     # Tracking filter: "kalman", "ekf", "ukf", "imm", "particle"
+                          # IMM = Interactive Multiple Model (handles maneuvering targets)
+    
+    max_tracks: 20         # Maximum number of simultaneous tracks
+    
+    # Track initiation logic (M-of-N rule)
+    track_initiation: "m_of_n"  # Logic type for starting new tracks
+    m_detections: 2        # Need at least M detections...
+    n_scans: 3            # ...within N consecutive scans to initiate track
+    
+    # Track maintenance
+    track_termination: 5   # Delete track after this many consecutive missed detections
+    
+  # Beam management for phased arrays
+  beam_management:
+    num_beams: 4           # Number of simultaneous beams (for AESA/DBF)
+    scan_pattern: "adaptive"  # "raster", "spiral", "random", "adaptive"
+    search_revisit: 2.0    # Time between search scans in seconds
+    track_revisit: 0.2     # Time between track updates in seconds
+
+# TARGET DEFINITIONS
+# ------------------
+# List of targets in the scenario with their properties
+targets:
+  # Target 1: Fighter Aircraft (High threat, maneuvering)
+  # ------------------------------------------------------
+  - name: "Fighter-1"
+    type: "fighter_aircraft"  # Target category for classification
+    
+    # Initial kinematics (position and motion)
+    initial_position: [50000.0, 20000.0, 5000.0]  # [x, y, z] in meters
+                                                   # x: range, y: cross-range, z: altitude
+    velocity: [-300.0, -50.0, 0.0]  # [vx, vy, vz] in m/s
+                                     # Negative vx = approaching radar
+    acceleration: [5.0, 2.0, 0.0]   # [ax, ay, az] in m/s²
+    
+    # Radar Cross Section (RCS) model
+    rcs:
+      model: "swerling_1"     # RCS fluctuation model:
+                             # swerling_0: Constant (non-fluctuating)
+                             # swerling_1: Slow fluctuation, chi-squared with 2 DOF
+                             # swerling_2: Fast fluctuation, chi-squared with 2 DOF
+                             # swerling_3: Slow fluctuation, chi-squared with 4 DOF
+                             # swerling_4: Fast fluctuation, chi-squared with 4 DOF
+      mean_value: 2.0         # Mean RCS in m² (fighter: 1-5 m²)
+      
+    # Maneuvering model
+    kinematics:
+      maneuver_type: "weaving"      # "straight", "weaving", "circular", "random"
+      maneuver_period: 10.0         # Period of maneuver cycle in seconds
+      maneuver_amplitude: 10.0      # Maximum acceleration during maneuver in m/s²
+      
+    # Threat assessment
+    threat_level: 90          # Threat priority 0-100 (affects resource allocation)
+    classification: "hostile" # IFF classification: "hostile", "friendly", "neutral", "unknown"
+    
+  # Target 2: Commercial Airliner (Low threat, predictable)
+  # --------------------------------------------------------
+  - name: "Airliner-1"
+    type: "commercial_aircraft"
+    initial_position: [30000.0, 40000.0, 10000.0]  # 30km range, 40km cross, 10km altitude
+    velocity: [-200.0, 0.0, 0.0]  # 200 m/s approach speed (typical cruise)
+    acceleration: [0.0, 0.0, 0.0]  # No acceleration (constant velocity)
+    
+    rcs:
+      model: "swerling_0"     # Non-fluctuating (large, stable target)
+      mean_value: 100.0       # Large RCS typical of airliners (50-200 m²)
+      
+    kinematics:
+      maneuver_type: "straight"  # Predictable flight path
+      
+    threat_level: 10          # Low threat
+    classification: "civilian"
+    
+  # Target 3: Small Drone (Medium threat, hard to detect)
+  # ------------------------------------------------------
+  - name: "Drone-1"
+    type: "small_uav"
+    initial_position: [5000.0, 3000.0, 500.0]  # Close range, low altitude
+    velocity: [20.0, 15.0, 2.0]  # Slow speed (25 m/s total)
+    acceleration: [0.0, 0.0, 0.0]
+    
+    rcs:
+      model: "swerling_3"     # Multiple scatterers (complex shape)
+      mean_value: 0.01        # Very small RCS (0.01 m² = -20 dBsm)
+                             # Detection challenge due to small size
+      
+    kinematics:
+      maneuver_type: "circular"  # Orbiting pattern
+      orbit_radius: 1000.0       # Orbit radius in meters
+      orbit_period: 300.0        # Time for one complete orbit in seconds
+      
+    threat_level: 50          # Medium threat (could be surveillance)
+    classification: "unknown"
+
+# ENVIRONMENTAL CONDITIONS
+# ------------------------
+# Atmospheric and weather effects on radar propagation
+environment:
+  # Standard atmosphere parameters
+  atmosphere:
+    temperature: 20.0        # Air temperature in Celsius (affects sound speed)
+    pressure: 1013.25        # Atmospheric pressure in hPa (standard sea level)
+    humidity: 60.0           # Relative humidity in percent (affects attenuation)
+    
+  # Weather conditions
+  weather:
+    type: "light_rain"       # Weather: "clear", "light_rain", "heavy_rain", "fog", "snow"
+    rain_rate: 2.0           # Precipitation rate in mm/hr (affects attenuation)
+                            # Light: 0-2.5, Moderate: 2.5-10, Heavy: >10 mm/hr
+    visibility: 10000        # Optical visibility in meters
+    
+  # Propagation effects
+  propagation:
+    enable_atmospheric_loss: true  # Include oxygen/water vapor absorption
+    enable_rain_attenuation: true  # Include rain loss (significant at X-band)
+    earth_radius_factor: 1.333      # 4/3 earth model for standard refraction
+                                   # >1.333 for ducting, <1.333 for sub-refraction
+    
+# CLUTTER CONFIGURATION
+# ---------------------
+# Ground, sea, and volume clutter that creates false alarms
+clutter:
+  enabled: true              # Master clutter enable/disable
+  
+  # Ground/land clutter
+  ground_clutter:
+    enabled: true
+    type: "rural"            # Clutter type: "rural", "urban", "mountainous", "desert"
+                            # Affects reflectivity and Doppler spread
+    reflectivity: -20        # Clutter reflectivity in dBsm/m²
+                            # Typical: Rural -20, Urban -10, Mountains -15 dB
+    doppler_spread: 1.0      # Doppler spread due to wind/motion in m/s
+    
+  # Sea clutter (if near ocean)
+  sea_clutter:
+    enabled: false           # Not used in this land scenario
+    
+  # Volume clutter (rain, chaff, birds)
+  volume_clutter:
+    enabled: true
+    type: "rain"             # Volume clutter source: "rain", "chaff", "birds"
+    reflectivity: -30        # Volume reflectivity in dBZ
+                            # Light rain: -30, Heavy rain: -10, Chaff: 0 dBZ
+    extent: [0, 100000, 0, 50000, 0, 10000]  # [x_min, x_max, y_min, y_max, z_min, z_max] in meters
+                                              # Defines 3D volume containing clutter
+
+# JAMMING CONFIGURATION
+# ---------------------
+# Electronic warfare and countermeasures
+jamming:
+  enabled: true              # Enable jamming simulation
+  
+  jammers:
+    # Noise jammer example
+    - name: "Jammer-1"
+      type: "noise"          # Jammer type: "noise", "deception", "drfm"
+      position: [40000.0, 10000.0, 3000.0]  # Jammer location in meters
+      
+      # Jammer parameters
+      power: 100              # Effective radiated power in Watts
+      bandwidth: 100.0e6      # Jamming bandwidth in Hz (100 MHz)
+      center_frequency: 10.0e9  # Center frequency (should match radar)
+      
+      technique: "barrage"    # Jamming technique:
+                             # "barrage": Wideband noise
+                             # "spot": Narrowband on radar frequency
+                             # "sweep": Frequency sweeping
+                             # "deception": False targets
+                             
+      active_time: [10.0, 40.0]  # Jammer active from 10s to 40s of simulation
+
+# ELECTRONIC COUNTER-COUNTERMEASURES (ECCM)
+# -----------------------------------------
+# Radar techniques to counter jamming
+eccm:
+  enabled: true
+  techniques:
+    - "frequency_agility"    # Hop frequencies to avoid jamming
+    - "pulse_compression"    # Spread spectrum for jamming resistance
+    - "sidelobe_blanking"    # Reduce jamming through sidelobes
+    # Other options: "burn_through", "home_on_jam", "dicke_fix"
+    
+# RESOURCE MANAGEMENT PRIORITIES
+# ------------------------------
+# How radar allocates time/energy between tasks
+resource_management:
+  enabled: true              # Use adaptive resource management
+  
+  # Weights for calculating target priority
+  priority_weights:
+    threat_level: 0.4        # Weight based on threat classification (0-1)
+    range: 0.2               # Weight based on target range (closer = higher)
+    closing_velocity: 0.2    # Weight based on approach speed
+    track_quality: 0.1       # Weight based on track uncertainty
+    time_since_update: 0.1   # Weight based on track staleness
+    # Sum of weights should equal 1.0
+    
+  # Time allocation between radar functions
+  beam_allocation:
+    search: 0.3              # 30% of time for searching for new targets
+    track: 0.5               # 50% of time for tracking known targets
+    classification: 0.2      # 20% of time for target identification
+    # Total should equal 1.0
+
+# SIMULATION OUTPUT CONFIGURATION
+# -------------------------------
+# What data to save and how to visualize results    
+output:
+  # Data saving options
+  save_figures: true         # Save plots as PNG/PDF files
+  save_data: true           # Save raw simulation data
+  save_tracks: true         # Save track histories
+  output_dir: "results/tutorial"  # Directory for output files
+  
+  # Visualization plots to generate
+  plots:
+    - "ppi_display"          # Plan Position Indicator (radar scope view)
+    - "range_doppler_map"    # 2D map showing range vs Doppler
+    - "track_history"        # Target tracks over time
+    - "detection_statistics" # Pd, Pfa, SNR statistics
+    - "resource_timeline"    # Beam scheduling timeline
+    
+  # Performance metrics to calculate
+  metrics:
+    - "probability_of_detection"  # Pd vs range/RCS
+    - "false_alarm_rate"          # Actual vs desired Pfa
+    - "track_completeness"        # Percentage of target path tracked
+    - "track_purity"              # Percentage of track from single target
+    - "position_rmse"             # Root mean square position error
+    - "velocity_rmse"             # Root mean square velocity error
+    - "resource_utilization"      # Percentage of radar time used
+    
+  data_format: "hdf5"        # Output format: "hdf5", "csv", "json", "mat"
+                            # HDF5 recommended for large datasets
+  
+# ADVANCED OPTIONS
+# ----------------
+# Additional configuration for special cases
+advanced:
+  random_seed: 42            # Random seed for reproducible results
+                            # Set to null for different results each run
+  
+  parallel_processing: true  # Use multiple CPU cores
+  num_workers: 4            # Number of parallel workers
+  
+  # Monte Carlo simulation for statistical analysis
+  monte_carlo:
+    enabled: false          # Run multiple iterations
+    num_runs: 100          # Number of Monte Carlo trials
+    # Generates statistics over multiple runs
+    
+  # Optimization settings
+  optimization:
+    enabled: false
+    optimize_for: "detection"  # Optimization goal: "detection", "tracking", "resources"
+                              # Auto-tunes parameters for best performance

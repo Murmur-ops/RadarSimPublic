@@ -1,0 +1,52 @@
+# Minimal Single Aircraft Detection Scenario
+# This is the simplest possible configuration - one radar, one target
+
+scenario:
+  name: "Single Aircraft Detection"
+  description: "Basic radar detecting a single aircraft"
+  duration: 30.0  # seconds
+  time_step: 0.1  # 100ms updates
+
+# Single Radar Configuration
+radar:
+  type: "basic_3d"
+  position: [0.0, 0.0, 0.0]  # Origin
+  
+  parameters:
+    frequency: 3.0e9        # 3 GHz (S-band)
+    power: 50000           # 50 kW
+    antenna_gain: 30       # 30 dB
+    pulse_width: 1.0e-6    # 1 microsecond
+    prf: 1000              # 1 kHz
+    bandwidth: 10.0e6      # 10 MHz
+    noise_figure: 3.0      # 3 dB
+    losses: 2.0            # 2 dB
+    
+  processing:
+    max_range: 100000      # 100 km
+    detection_threshold: 13.0  # 13 dB SNR required
+
+# Single Target
+targets:
+  - name: "Aircraft-1"
+    type: "commercial_aircraft"
+    initial_position: [50000.0, 20000.0, 10000.0]  # 50km range, 10km altitude
+    velocity: [-200.0, 0.0, 0.0]  # 200 m/s approaching
+    rcs:
+      model: "swerling_0"  # Non-fluctuating
+      mean_value: 50.0     # 50 m² RCS
+
+# Basic Environment
+environment:
+  atmosphere:
+    temperature: 15.0
+    pressure: 1013.25
+    humidity: 50.0
+  weather:
+    type: "clear"
+
+# Output
+output:
+  save_figures: true
+  save_data: false
+  output_dir: "results/single_aircraft"
