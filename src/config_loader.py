@@ -154,11 +154,20 @@ class ConfigLoader:
         Returns:
             ScenarioConfig object
         """
-        # Add .yaml if not present
-        if not scenario_name.endswith('.yaml'):
-            scenario_name += '.yaml'
-        
-        filepath = self.scenarios_dir / scenario_name
+        # Check if this is already a path
+        if '/' in scenario_name or scenario_name.startswith('configs'):
+            # User provided a path, use it directly
+            filepath = Path(scenario_name)
+            if not filepath.exists():
+                # Try without the redundant configs/scenarios prefix
+                if scenario_name.startswith('configs/scenarios/'):
+                    scenario_name = scenario_name.replace('configs/scenarios/', '')
+                    filepath = self.scenarios_dir / scenario_name
+        else:
+            # Just the scenario name, add .yaml if needed
+            if not scenario_name.endswith('.yaml'):
+                scenario_name += '.yaml'
+            filepath = self.scenarios_dir / scenario_name
         
         if not filepath.exists():
             raise FileNotFoundError(f"Scenario file not found: {filepath}")

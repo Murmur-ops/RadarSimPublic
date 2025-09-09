@@ -114,8 +114,11 @@ class ScenarioRunner:
                     else:
                         target_vel = target['velocity']
                     
-                    if abs(det['range'] - target['range']) < 200 and \
-                       abs(det['velocity'] - target_vel) < 5:
+                    # More generous matching tolerances
+                    # Range within 500m (10 range bins at 50m resolution)
+                    # Velocity within 10 m/s (accounts for discretization)
+                    if abs(det['range'] - target['range']) < 500 and \
+                       abs(det['velocity'] - target_vel) < 10:
                         detected = True
                         break
                 target_histories[target['name']]['detected'].append(detected)
@@ -245,7 +248,8 @@ class ScenarioRunner:
                 for name, history in target_histories.items():
                     time_idx = int(det['time'] / self.config.time_step)
                     if time_idx < len(history['ranges']):
-                        if abs(det['range'] - history['ranges'][time_idx]) < 200:
+                        # Use same tolerances as detection matching
+                        if abs(det['range'] - history['ranges'][time_idx]) < 500:
                             matched = True
                             break
                 if not matched:

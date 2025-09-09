@@ -50,10 +50,10 @@ fi
 
 # Create a simple test to verify installation
 echo "Testing installation..."
+cd ..  # Go to project root
 python3 -c "
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath('.'))))
 try:
     from src.radar import Radar, RadarParameters
     from src.target import Target
@@ -63,8 +63,10 @@ except ImportError as e:
     print(f'✗ Failed to load modules: {e}')
     sys.exit(1)
 "
+TEST_RESULT=$?
+cd GETTING_STARTED  # Return to GETTING_STARTED
 
-if [ $? -eq 0 ]; then
+if [ $TEST_RESULT -eq 0 ]; then
     echo ""
     echo "✅ Setup complete!"
     echo ""

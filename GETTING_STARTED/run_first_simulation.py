@@ -103,12 +103,17 @@ def run_basic_simulation():
     # Step 3: Initialize tracking
     print("\n4. Initializing Kalman filter for tracking...")
     kf = initialize_constant_velocity_filter(
-        initial_position=target.position[:2],
-        initial_velocity=target.velocity[:2],
+        dim=2,  # 2D tracking (x, y)
         dt=0.1,
-        process_noise=1.0,
-        measurement_noise=100.0
+        process_noise_std=1.0,
+        measurement_noise_std=10.0
     )
+    
+    # Set initial state
+    kf.x[0] = target.position[0]  # x position
+    kf.x[1] = target.velocity[0]  # x velocity
+    kf.x[2] = target.position[1]  # y position
+    kf.x[3] = target.velocity[1]  # y velocity
     
     # Step 4: Run simulation
     print("\n5. Running simulation...")
