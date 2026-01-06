@@ -4,120 +4,62 @@ scenario:
   description: "Track a commercial aircraft with a ground-based radar"
   duration: 30.0  # seconds
   time_step: 0.1  # seconds
-  output_dir: "results/getting_started"
 
 # Define the radar system
-radar_systems:
-  - name: "Tutorial-Radar"
-    type: "pulse_doppler"
-    position: [0, 0, 10]  # meters [x, y, z]
-    orientation: [0, 0]   # [azimuth, elevation] in degrees
-    
-    # Transmitter parameters
+radar:
+  type: "pulse_doppler"
+  parameters:
     frequency: 10.0e9     # 10 GHz (X-band)
-    power: 1000.0        # 1 kW transmit power
-    pulse_width: 1.0e-6  # 1 microsecond
-    prf: 1000           # Pulse Repetition Frequency (Hz)
-    
-    # Antenna parameters
-    antenna:
-      type: "parabolic"
-      gain: 35.0         # dB
-      azimuth_beamwidth: 2.0    # degrees
-      elevation_beamwidth: 2.0  # degrees
-      sidelobe_level: -25.0     # dB
-    
-    # Receiver parameters
-    receiver:
-      noise_figure: 3.0     # dB
-      bandwidth: 1.0e6      # 1 MHz
-      detection_threshold: 13.0  # dB SNR
-    
-    # Processing parameters
-    processing:
-      integration_pulses: 10
-      cfar_guard_cells: 3
-      cfar_training_cells: 10
-      cfar_threshold_factor: 4.0
-    
-    # Tracking configuration
-    tracking:
-      enabled: true
-      algorithm: "kalman"
-      association_gate: 3.0
-      track_confirmation: 3
-      track_deletion: 5
+    power: 1000.0         # 1 kW transmit power
+    antenna_gain: 35.0    # dB
+    pulse_width: 1.0e-6   # 1 microsecond
+    prf: 1000             # Pulse Repetition Frequency (Hz)
+    bandwidth: 1.0e6      # 1 MHz
+    noise_figure: 3.0     # dB
+    losses: 3.0           # dB
+
+  processing:
+    range_resolution: 150     # meters
+    max_range: 50000          # meters (50km)
+    velocity_resolution: 1.0  # m/s
+    n_doppler_bins: 256
+    detection_threshold: 13.0 # dB SNR
+    cfar_guard_cells: 3
+    cfar_training_cells: 10
+
+  tracking:
+    filter_type: "kalman"
+    max_tracks: 10
+    track_initiation_threshold: 3
+    track_termination_threshold: 5
 
 # Define targets
 targets:
   - name: "Commercial-Flight-001"
     type: "aircraft"
-    subtype: "airliner"
-    
-    # Initial position [x, y, z] in meters
-    initial_position: [30000, 15000, 10000]
-    
-    # Velocity [vx, vy, vz] in m/s
-    velocity: [-200, -50, 0]
-    
-    # Radar Cross Section
-    rcs: 100.0  # m² (typical for large aircraft)
-    
-    # Fluctuation model
-    swerling_model: 1
-    
-    # Optional: Define waypoints for complex trajectories
-    trajectory:
-      type: "straight"  # or "waypoint", "orbit", "random_walk"
+    initial_position: [30.0, 15.0, 10.0]  # km [x, y, z]
+    velocity: [-200.0, -50.0, 0.0]        # m/s
+    rcs: 100.0                            # m² (typical for large aircraft)
 
 # Environmental conditions
 environment:
-  # Atmospheric conditions
-  atmosphere:
-    temperature: 15.0     # Celsius
-    pressure: 1013.25    # hPa
-    humidity: 60         # percent
-    rain_rate: 0.0       # mm/hr
-  
-  # Clutter settings
-  clutter:
-    ground_clutter:
-      enabled: false
-      clutter_coefficient: -20  # dB
-    
-    sea_clutter:
-      enabled: false
-      sea_state: 2
+  temperature: 15.0     # Celsius
+  pressure: 1013.25     # hPa
+  humidity: 60          # percent
+  weather: "clear"
+  terrain: "flat"
+  rain_rate: 0.0        # mm/hr
 
-# Simulation options
-simulation:
-  # Random seed for reproducibility
-  random_seed: 42
-  
-  # Monte Carlo runs
-  num_runs: 1
-  
-  # Data recording
-  record:
-    detections: true
-    tracks: true
-    truth: true
-    metrics: true
-  
-  # Visualization
-  visualization:
-    enabled: true
-    update_rate: 10  # Hz
-    display_type: "ppi"  # Plan Position Indicator
-    range_rings: [10000, 20000, 30000, 40000]  # meters
+# Clutter settings
+clutter:
+  enabled: false
 
 # Output configuration
 output:
-  save_plots: true
+  save_figures: true
   save_data: true
-  data_format: "json"  # or "csv", "hdf5"
-  
-  # Metrics to calculate
+  output_dir: "results/getting_started"
+  data_format: "json"
   metrics:
     - "detection_probability"
     - "false_alarm_rate"
