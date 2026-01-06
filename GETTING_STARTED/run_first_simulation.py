@@ -175,7 +175,7 @@ def run_basic_simulation():
             kf.update(measurement)
             
             # Store track
-            track_state = kf.state.copy()
+            track_state = kf.x.copy()
             track = {
                 'time': current_time,
                 'position': np.array([track_state[0], track_state[2], target.position[2]]),
